@@ -8,14 +8,12 @@ import minecraftCharacters from "@assets/generated_images/minecraft_characters_c
 import minecraftMic from "@assets/generated_images/pixel_art_microphone_icon.png";
 import minecraftGrass from "@assets/generated_images/minecraft_grass_block_pattern.png";
 
-const DEFAULT_PIN = "5812";
-
 function PinEntry({ onSubmit, error, initialPin }: { onSubmit: (pin: string) => void; error?: string; initialPin?: string }) {
   const [pin, setPin] = useState(() => {
     if (initialPin && /^\d{4}$/.test(initialPin)) {
       return initialPin.split("");
     }
-    return DEFAULT_PIN.split("");
+    return ["", "", "", ""];
   });
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const autoJoinedRef = useRef(false);
