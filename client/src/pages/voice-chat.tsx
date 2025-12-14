@@ -5,9 +5,22 @@ import { Slider } from "@/components/ui/slider";
 import { Phone, PhoneOff, Mic, MicOff, Volume2, VolumeX } from "lucide-react";
 import type { ConnectionStatus, SignalingMessage } from "@shared/schema";
 
-function PinEntry({ onSubmit, error }: { onSubmit: (pin: string) => void; error?: string }) {
-  const [pin, setPin] = useState(["", "", "", ""]);
+function PinEntry({ onSubmit, error, initialPin }: { onSubmit: (pin: string) => void; error?: string; initialPin?: string }) {
+  const [pin, setPin] = useState(() => {
+    if (initialPin && /^\d{4}$/.test(initialPin)) {
+      return initialPin.split("");
+    }
+    return ["", "", "", ""];
+  });
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const autoJoinedRef = useRef(false);
+
+  useEffect(() => {
+    if (initialPin && /^\d{4}$/.test(initialPin) && !autoJoinedRef.current) {
+      autoJoinedRef.current = true;
+      onSubmit(initialPin);
+    }
+  }, [initialPin, onSubmit]);
 
   const handleChange = (index: number, value: string) => {
     if (!/^\d*$/.test(value)) return;
@@ -268,6 +281,8 @@ export default function VoiceChat() {
   const [volume, setVolume] = useState(80);
   const [audioLevel, setAudioLevel] = useState(0);
   const [peerConnected, setPeerConnected] = useState(false);
+
+  const urlPin = new URLSearchParams(window.location.search).get("pin") || undefined;
 
   const wsRef = useRef<WebSocket | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
@@ -536,7 +551,7 @@ export default function VoiceChat() {
     <>
       <audio ref={remoteAudioRef} autoPlay playsInline />
       {!isJoined ? (
-        <PinEntry onSubmit={handleJoin} error={error} />
+        <PinEntry onSubmit={handleJoin} error={error} initialPin={urlPin} />
       ) : (
         <VoiceChatInterface
           status={status}
