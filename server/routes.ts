@@ -8,6 +8,10 @@ interface Room {
 }
 
 const rooms = new Map<string, Room>();
+const ROOM_CAPACITY = 4;
+
+// Single family room lock - once 2 users connect, this PIN becomes the only allowed room
+let lockedPin: string | null = null;
 
 function getOrCreateRoom(pin: string): Room {
   if (!rooms.has(pin)) {
@@ -16,12 +20,56 @@ function getOrCreateRoom(pin: string): Room {
   return rooms.get(pin)!;
 }
 
+function canJoinRoom(pin: string): { allowed: boolean; error?: string } {
+  // If no room is locked yet, any PIN can create/join a room
+  if (lockedPin === null) {
+    return { allowed: true };
+  }
+  
+  // If a room is locked, only the locked PIN is allowed
+  if (pin !== lockedPin) {
+    return { 
+      allowed: false, 
+      error: "A family session is already active. Please use the correct PIN to join." 
+    };
+  }
+  
+  // Check if the locked room is at capacity
+  const room = rooms.get(lockedPin);
+  if (room && room.peers.size >= ROOM_CAPACITY) {
+    return { 
+      allowed: false, 
+      error: "Room is full. Maximum 4 players allowed." 
+    };
+  }
+  
+  return { allowed: true };
+}
+
+function lockRoomIfNeeded(pin: string) {
+  const room = rooms.get(pin);
+  // Lock the room once 2 or more users are connected
+  if (room && room.peers.size >= 2 && lockedPin === null) {
+    lockedPin = pin;
+    console.log(`Room locked to PIN: ${pin}`);
+  }
+}
+
+function unlockRoomIfEmpty(pin: string) {
+  // If the locked room is being deleted, unlock the system
+  if (lockedPin === pin && !rooms.has(pin)) {
+    lockedPin = null;
+    console.log("Room unlocked - family session ended");
+  }
+}
+
 function removeFromRoom(pin: string, peerId: string) {
   const room = rooms.get(pin);
   if (room) {
     room.peers.delete(peerId);
     if (room.peers.size === 0) {
       rooms.delete(pin);
+      unlockRoomIfEmpty(pin);
     } else {
       room.peers.forEach((ws) => {
         if (ws.readyState === WebSocket.OPEN) {
@@ -59,6 +107,17 @@ export async function registerRoutes(
               return;
             }
 
+            // Check if this PIN can join (single room restriction)
+            const joinCheck = canJoinRoom(pin);
+            if (!joinCheck.allowed) {
+              ws.send(JSON.stringify({
+                type: "joined",
+                success: false,
+                error: joinCheck.error,
+              }));
+              return;
+            }
+
             currentPin = pin;
             currentPeerId = peerId;
 
@@ -74,6 +133,9 @@ export async function registerRoutes(
             });
 
             room.peers.set(peerId, ws);
+            
+            // Lock the room once 2 users are connected
+            lockRoomIfNeeded(pin);
 
             ws.send(JSON.stringify({
               type: "joined",
