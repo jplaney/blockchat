@@ -8,12 +8,14 @@ import minecraftCharacters from "@assets/generated_images/minecraft_characters_c
 import minecraftMic from "@assets/generated_images/pixel_art_microphone_icon.png";
 import minecraftGrass from "@assets/generated_images/minecraft_grass_block_pattern.png";
 
+const DEFAULT_PIN = "5812";
+
 function PinEntry({ onSubmit, error, initialPin }: { onSubmit: (pin: string) => void; error?: string; initialPin?: string }) {
   const [pin, setPin] = useState(() => {
     if (initialPin && /^\d{4}$/.test(initialPin)) {
       return initialPin.split("");
     }
-    return ["", "", "", ""];
+    return DEFAULT_PIN.split("");
   });
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const autoJoinedRef = useRef(false);
@@ -80,8 +82,8 @@ function PinEntry({ onSubmit, error, initialPin }: { onSubmit: (pin: string) => 
               className="w-full max-w-xs mx-auto rounded-lg"
               style={{ imageRendering: 'pixelated' }}
             />
-            <h1 className="text-2xl font-bold text-amber-900 dark:text-amber-100" style={{ fontFamily: "'Press Start 2P', monospace, system-ui" }}>
-              Family Voice Chat
+            <h1 className="text-xl font-bold text-amber-900 dark:text-amber-100" style={{ fontFamily: "'Press Start 2P', monospace, system-ui" }}>
+              Nelle's Chat-O-Matic
             </h1>
             <p className="text-amber-700 dark:text-amber-300 text-sm">Enter your 4-digit PIN to join</p>
             <p className="text-xs text-amber-600 dark:text-amber-400">Up to 4 players can join!</p>
@@ -262,8 +264,8 @@ function VoiceChatInterface({
                 style={{ imageRendering: 'pixelated' }}
               />
             </div>
-            <h1 className="text-xl font-bold text-amber-900 dark:text-amber-100" style={{ fontFamily: "'Press Start 2P', monospace, system-ui" }}>
-              Voice Chat
+            <h1 className="text-lg font-bold text-amber-900 dark:text-amber-100" style={{ fontFamily: "'Press Start 2P', monospace, system-ui" }}>
+              Nelle's Chat-O-Matic
             </h1>
             <StatusIndicator status={status} connectedPeers={connectedPeers} />
             <ParticipantIndicator count={totalInRoom} />
