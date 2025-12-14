@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Phone, PhoneOff, Mic, MicOff, Volume2, VolumeX, Users } from "lucide-react";
 import type { ConnectionStatus, SignalingMessage } from "@shared/schema";
+import minecraftCharacters from "@assets/generated_images/minecraft_characters_chatting_together.png";
+import minecraftMic from "@assets/generated_images/pixel_art_microphone_icon.png";
+import minecraftGrass from "@assets/generated_images/minecraft_grass_block_pattern.png";
 
 function PinEntry({ onSubmit, error, initialPin }: { onSubmit: (pin: string) => void; error?: string; initialPin?: string }) {
   const [pin, setPin] = useState(() => {
@@ -59,16 +62,29 @@ function PinEntry({ onSubmit, error, initialPin }: { onSubmit: (pin: string) => 
   const isComplete = pin.every(d => d);
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <Card className="w-full max-w-md">
-        <CardContent className="p-8 space-y-8">
-          <div className="text-center space-y-2">
-            <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center mb-4">
-              <Phone className="w-8 h-8 text-primary" />
-            </div>
-            <h1 className="text-2xl font-bold text-foreground">Family Voice Chat</h1>
-            <p className="text-muted-foreground">Enter your 4-digit PIN to join the call</p>
-            <p className="text-xs text-muted-foreground">Up to 4 family members can join</p>
+    <div 
+      className="min-h-screen flex items-center justify-center p-4"
+      style={{
+        backgroundImage: `url(${minecraftGrass})`,
+        backgroundSize: '120px 120px',
+        backgroundRepeat: 'repeat',
+      }}
+    >
+      <div className="absolute inset-0 bg-gradient-to-b from-sky-400/80 to-sky-600/80 dark:from-sky-900/90 dark:to-slate-900/95" />
+      <Card className="w-full max-w-md relative z-10 border-4 border-amber-800 dark:border-amber-900 bg-amber-50/95 dark:bg-stone-800/95">
+        <CardContent className="p-8 space-y-6">
+          <div className="text-center space-y-3">
+            <img 
+              src={minecraftCharacters} 
+              alt="Minecraft characters chatting" 
+              className="w-full max-w-xs mx-auto rounded-lg"
+              style={{ imageRendering: 'pixelated' }}
+            />
+            <h1 className="text-2xl font-bold text-amber-900 dark:text-amber-100" style={{ fontFamily: "'Press Start 2P', monospace, system-ui" }}>
+              Family Voice Chat
+            </h1>
+            <p className="text-amber-700 dark:text-amber-300 text-sm">Enter your 4-digit PIN to join</p>
+            <p className="text-xs text-amber-600 dark:text-amber-400">Up to 4 players can join!</p>
           </div>
 
           <div className="flex justify-center gap-3" onPaste={handlePaste}>
@@ -83,13 +99,17 @@ function PinEntry({ onSubmit, error, initialPin }: { onSubmit: (pin: string) => 
                 onChange={(e) => handleChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
                 data-testid={`input-pin-${index}`}
-                className="w-14 h-16 text-center text-2xl font-bold border-2 rounded-lg bg-background text-foreground border-border focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                className="w-14 h-16 text-center text-2xl font-bold border-4 bg-stone-100 dark:bg-stone-700 text-stone-800 dark:text-stone-100 border-stone-400 dark:border-stone-500 focus:border-green-500 focus:ring-2 focus:ring-green-500/30 outline-none transition-all"
+                style={{ 
+                  fontFamily: "'Press Start 2P', monospace, system-ui",
+                  borderRadius: '0px'
+                }}
               />
             ))}
           </div>
 
           {error && (
-            <p className="text-center text-destructive text-sm" data-testid="text-error">
+            <p className="text-center text-red-600 dark:text-red-400 text-sm font-medium" data-testid="text-error">
               {error}
             </p>
           )}
@@ -97,15 +117,16 @@ function PinEntry({ onSubmit, error, initialPin }: { onSubmit: (pin: string) => 
           <Button
             onClick={() => onSubmit(pin.join(""))}
             disabled={!isComplete}
-            className="w-full h-12 text-lg"
+            className="w-full h-14 text-lg bg-green-600 hover:bg-green-700 border-4 border-green-800 text-white font-bold"
             data-testid="button-join"
+            style={{ borderRadius: '0px' }}
           >
             <Phone className="w-5 h-5 mr-2" />
-            Join Call
+            Join Game
           </Button>
 
-          <p className="text-center text-xs text-muted-foreground">
-            Press <kbd className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono">Enter</kbd> to join
+          <p className="text-center text-xs text-amber-600 dark:text-amber-400">
+            Press <kbd className="px-1.5 py-0.5 bg-stone-300 dark:bg-stone-600 text-stone-700 dark:text-stone-200 font-mono border-2 border-stone-400 dark:border-stone-500" style={{ borderRadius: '0px' }}>Enter</kbd> to join
           </p>
         </CardContent>
       </Card>
@@ -124,10 +145,10 @@ function AudioLevelMeter({ level }: { level: number }) {
         return (
           <div
             key={i}
-            className={`w-3 rounded-full transition-all duration-75 ${
-              isActive ? "bg-primary" : "bg-muted"
+            className={`w-4 transition-all duration-75 ${
+              isActive ? "bg-green-500" : "bg-stone-400 dark:bg-stone-600"
             }`}
-            style={{ height: `${height}%` }}
+            style={{ height: `${height}%`, borderRadius: '0px' }}
           />
         );
       })}
@@ -138,21 +159,21 @@ function AudioLevelMeter({ level }: { level: number }) {
 function StatusIndicator({ status, connectedPeers }: { status: ConnectionStatus; connectedPeers: number }) {
   const getStatusConfig = () => {
     if (status === "disconnected") {
-      return { text: "Not Connected", color: "text-muted-foreground", pulse: false };
+      return { text: "Not Connected", color: "text-stone-500", pulse: false };
     }
     if (status === "connecting") {
-      return { text: "Connecting...", color: "text-amber-500", pulse: true };
+      return { text: "Connecting...", color: "text-amber-600 dark:text-amber-400", pulse: true };
     }
     if (status === "reconnecting") {
-      return { text: "Reconnecting...", color: "text-amber-500", pulse: true };
+      return { text: "Reconnecting...", color: "text-amber-600 dark:text-amber-400", pulse: true };
     }
     if (status === "waiting" || (status === "connected" && connectedPeers === 0)) {
-      return { text: "Waiting for family members...", color: "text-amber-500", pulse: true };
+      return { text: "Waiting for players...", color: "text-amber-600 dark:text-amber-400", pulse: true };
     }
     if (connectedPeers === 1) {
-      return { text: "1 family member connected", color: "text-green-500", pulse: false };
+      return { text: "1 player connected", color: "text-green-600 dark:text-green-400", pulse: false };
     }
-    return { text: `${connectedPeers} family members connected`, color: "text-green-500", pulse: false };
+    return { text: `${connectedPeers} players connected`, color: "text-green-600 dark:text-green-400", pulse: false };
   };
 
   const { text, color, pulse } = getStatusConfig();
@@ -161,16 +182,16 @@ function StatusIndicator({ status, connectedPeers }: { status: ConnectionStatus;
     <div className="flex items-center justify-center gap-3" data-testid="status-indicator">
       <div className="relative flex h-3 w-3">
         {pulse && (
-          <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+          <span className={`animate-ping absolute inline-flex h-full w-full opacity-75 ${
             connectedPeers > 0 ? "bg-green-400" : "bg-amber-400"
-          }`}></span>
+          }`} style={{ borderRadius: '0px' }}></span>
         )}
-        <span className={`relative inline-flex rounded-full h-3 w-3 ${
-          status === "disconnected" ? "bg-muted-foreground" :
+        <span className={`relative inline-flex h-3 w-3 ${
+          status === "disconnected" ? "bg-stone-400" :
           connectedPeers > 0 ? "bg-green-500" : "bg-amber-500"
-        }`}></span>
+        }`} style={{ borderRadius: '0px' }}></span>
       </div>
-      <span className={`text-lg font-medium ${color}`} data-testid="text-status">
+      <span className={`text-base font-medium ${color}`} data-testid="text-status">
         {text}
       </span>
     </div>
@@ -179,9 +200,9 @@ function StatusIndicator({ status, connectedPeers }: { status: ConnectionStatus;
 
 function ParticipantIndicator({ count }: { count: number }) {
   return (
-    <div className="flex items-center justify-center gap-2 text-muted-foreground" data-testid="participant-count">
+    <div className="flex items-center justify-center gap-2 text-amber-700 dark:text-amber-300" data-testid="participant-count">
       <Users className="w-4 h-4" />
-      <span className="text-sm">{count}/4 in room</span>
+      <span className="text-sm font-medium">{count}/4 players in room</span>
     </div>
   );
 }
@@ -219,16 +240,31 @@ function VoiceChatInterface({
   }, [onMuteToggle]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <Card className="w-full max-w-md">
-        <CardContent className="p-8 space-y-8">
+    <div 
+      className="min-h-screen flex items-center justify-center p-4"
+      style={{
+        backgroundImage: `url(${minecraftGrass})`,
+        backgroundSize: '120px 120px',
+        backgroundRepeat: 'repeat',
+      }}
+    >
+      <div className="absolute inset-0 bg-gradient-to-b from-sky-400/80 to-sky-600/80 dark:from-sky-900/90 dark:to-slate-900/95" />
+      <Card className="w-full max-w-md relative z-10 border-4 border-amber-800 dark:border-amber-900 bg-amber-50/95 dark:bg-stone-800/95">
+        <CardContent className="p-8 space-y-6">
           <div className="text-center space-y-4">
-            <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center transition-colors ${
-              connectedPeers > 0 ? "bg-green-500/10" : "bg-muted"
-            }`}>
-              <Phone className={`w-10 h-10 ${connectedPeers > 0 ? "text-green-500" : "text-muted-foreground"}`} />
+            <div className={`w-24 h-24 mx-auto flex items-center justify-center transition-all ${
+              connectedPeers > 0 ? "bg-green-500/20" : "bg-stone-300 dark:bg-stone-700"
+            }`} style={{ borderRadius: '0px' }}>
+              <img 
+                src={minecraftMic} 
+                alt="Microphone" 
+                className={`w-16 h-16 ${isMuted ? 'opacity-50 grayscale' : ''}`}
+                style={{ imageRendering: 'pixelated' }}
+              />
             </div>
-            <h1 className="text-2xl font-bold text-foreground">Family Voice Chat</h1>
+            <h1 className="text-xl font-bold text-amber-900 dark:text-amber-100" style={{ fontFamily: "'Press Start 2P', monospace, system-ui" }}>
+              Voice Chat
+            </h1>
             <StatusIndicator status={status} connectedPeers={connectedPeers} />
             <ParticipantIndicator count={totalInRoom} />
           </div>
@@ -239,9 +275,13 @@ function VoiceChatInterface({
 
           <Button
             onClick={onMuteToggle}
-            variant={isMuted ? "destructive" : "default"}
-            className="w-full h-16 text-lg gap-3"
+            className={`w-full h-16 text-lg gap-3 border-4 font-bold ${
+              isMuted 
+                ? "bg-red-600 hover:bg-red-700 border-red-800 text-white" 
+                : "bg-green-600 hover:bg-green-700 border-green-800 text-white"
+            }`}
             data-testid="button-mute"
+            style={{ borderRadius: '0px' }}
           >
             {isMuted ? (
               <>
@@ -258,7 +298,7 @@ function VoiceChatInterface({
 
           <div className="space-y-3">
             <div className="flex items-center gap-4">
-              <VolumeX className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+              <VolumeX className="w-5 h-5 text-amber-700 dark:text-amber-300 flex-shrink-0" />
               <Slider
                 value={[volume]}
                 onValueChange={(v) => onVolumeChange(v[0])}
@@ -267,27 +307,27 @@ function VoiceChatInterface({
                 className="flex-1"
                 data-testid="slider-volume"
               />
-              <Volume2 className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+              <Volume2 className="w-5 h-5 text-amber-700 dark:text-amber-300 flex-shrink-0" />
             </div>
-            <p className="text-center text-sm text-muted-foreground">
+            <p className="text-center text-sm text-amber-700 dark:text-amber-300 font-medium">
               Volume: {volume}%
             </p>
           </div>
 
-          <div className="pt-4 border-t border-border">
+          <div className="pt-4 border-t-4 border-amber-300 dark:border-stone-600">
             <Button
               onClick={onDisconnect}
-              variant="outline"
-              className="w-full gap-2"
+              className="w-full gap-2 bg-stone-500 hover:bg-stone-600 border-4 border-stone-700 text-white font-bold"
               data-testid="button-disconnect"
+              style={{ borderRadius: '0px' }}
             >
               <PhoneOff className="w-5 h-5" />
-              <span>Leave Call</span>
+              <span>Leave Game</span>
             </Button>
           </div>
 
-          <p className="text-center text-xs text-muted-foreground">
-            Press <kbd className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono">Space</kbd> to toggle mute
+          <p className="text-center text-xs text-amber-600 dark:text-amber-400">
+            Press <kbd className="px-1.5 py-0.5 bg-stone-300 dark:bg-stone-600 text-stone-700 dark:text-stone-200 font-mono border-2 border-stone-400 dark:border-stone-500" style={{ borderRadius: '0px' }}>Space</kbd> to toggle mute
           </p>
         </CardContent>
       </Card>
