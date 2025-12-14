@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Phone, PhoneOff, Mic, MicOff, Volume2, VolumeX } from "lucide-react";
+import { Phone, PhoneOff, Mic, MicOff, Volume2, VolumeX, Users } from "lucide-react";
 import type { ConnectionStatus, SignalingMessage } from "@shared/schema";
 
 function PinEntry({ onSubmit, error, initialPin }: { onSubmit: (pin: string) => void; error?: string; initialPin?: string }) {
@@ -68,6 +68,7 @@ function PinEntry({ onSubmit, error, initialPin }: { onSubmit: (pin: string) => 
             </div>
             <h1 className="text-2xl font-bold text-foreground">Family Voice Chat</h1>
             <p className="text-muted-foreground">Enter your 4-digit PIN to join the call</p>
+            <p className="text-xs text-muted-foreground">Up to 4 family members can join</p>
           </div>
 
           <div className="flex justify-center gap-3" onPaste={handlePaste}>
@@ -134,29 +135,39 @@ function AudioLevelMeter({ level }: { level: number }) {
   );
 }
 
-function StatusIndicator({ status, peerConnected }: { status: ConnectionStatus; peerConnected: boolean }) {
-  const config: Record<ConnectionStatus, { text: string; color: string; pulse: boolean }> = {
-    disconnected: { text: "Not Connected", color: "text-muted-foreground", pulse: false },
-    connecting: { text: "Connecting...", color: "text-amber-500", pulse: true },
-    waiting: { text: "Waiting for other person...", color: "text-amber-500", pulse: true },
-    connected: { text: peerConnected ? "Connected!" : "Waiting for other person...", color: peerConnected ? "text-green-500" : "text-amber-500", pulse: !peerConnected },
-    reconnecting: { text: "Reconnecting...", color: "text-amber-500", pulse: true },
+function StatusIndicator({ status, connectedPeers }: { status: ConnectionStatus; connectedPeers: number }) {
+  const getStatusConfig = () => {
+    if (status === "disconnected") {
+      return { text: "Not Connected", color: "text-muted-foreground", pulse: false };
+    }
+    if (status === "connecting") {
+      return { text: "Connecting...", color: "text-amber-500", pulse: true };
+    }
+    if (status === "reconnecting") {
+      return { text: "Reconnecting...", color: "text-amber-500", pulse: true };
+    }
+    if (status === "waiting" || (status === "connected" && connectedPeers === 0)) {
+      return { text: "Waiting for family members...", color: "text-amber-500", pulse: true };
+    }
+    if (connectedPeers === 1) {
+      return { text: "1 family member connected", color: "text-green-500", pulse: false };
+    }
+    return { text: `${connectedPeers} family members connected`, color: "text-green-500", pulse: false };
   };
 
-  const { text, color, pulse } = config[status];
+  const { text, color, pulse } = getStatusConfig();
 
   return (
     <div className="flex items-center justify-center gap-3" data-testid="status-indicator">
-      <div className={`relative flex h-3 w-3 ${pulse ? "" : ""}`}>
+      <div className="relative flex h-3 w-3">
         {pulse && (
           <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-            status === "connected" && !peerConnected ? "bg-amber-400" : 
-            status === "connected" ? "bg-green-400" : "bg-amber-400"
+            connectedPeers > 0 ? "bg-green-400" : "bg-amber-400"
           }`}></span>
         )}
         <span className={`relative inline-flex rounded-full h-3 w-3 ${
           status === "disconnected" ? "bg-muted-foreground" :
-          status === "connected" && peerConnected ? "bg-green-500" : "bg-amber-500"
+          connectedPeers > 0 ? "bg-green-500" : "bg-amber-500"
         }`}></span>
       </div>
       <span className={`text-lg font-medium ${color}`} data-testid="text-status">
@@ -166,12 +177,22 @@ function StatusIndicator({ status, peerConnected }: { status: ConnectionStatus; 
   );
 }
 
+function ParticipantIndicator({ count }: { count: number }) {
+  return (
+    <div className="flex items-center justify-center gap-2 text-muted-foreground" data-testid="participant-count">
+      <Users className="w-4 h-4" />
+      <span className="text-sm">{count}/4 in room</span>
+    </div>
+  );
+}
+
 function VoiceChatInterface({
   status,
   isMuted,
   volume,
   audioLevel,
-  peerConnected,
+  connectedPeers,
+  totalInRoom,
   onMuteToggle,
   onVolumeChange,
   onDisconnect,
@@ -180,7 +201,8 @@ function VoiceChatInterface({
   isMuted: boolean;
   volume: number;
   audioLevel: number;
-  peerConnected: boolean;
+  connectedPeers: number;
+  totalInRoom: number;
   onMuteToggle: () => void;
   onVolumeChange: (value: number) => void;
   onDisconnect: () => void;
@@ -202,12 +224,13 @@ function VoiceChatInterface({
         <CardContent className="p-8 space-y-8">
           <div className="text-center space-y-4">
             <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center transition-colors ${
-              peerConnected ? "bg-green-500/10" : "bg-muted"
+              connectedPeers > 0 ? "bg-green-500/10" : "bg-muted"
             }`}>
-              <Phone className={`w-10 h-10 ${peerConnected ? "text-green-500" : "text-muted-foreground"}`} />
+              <Phone className={`w-10 h-10 ${connectedPeers > 0 ? "text-green-500" : "text-muted-foreground"}`} />
             </div>
             <h1 className="text-2xl font-bold text-foreground">Family Voice Chat</h1>
-            <StatusIndicator status={status} peerConnected={peerConnected} />
+            <StatusIndicator status={status} connectedPeers={connectedPeers} />
+            <ParticipantIndicator count={totalInRoom} />
           </div>
 
           <div className="py-4">
@@ -272,6 +295,11 @@ function VoiceChatInterface({
   );
 }
 
+interface PeerConnection {
+  pc: RTCPeerConnection;
+  audioElement: HTMLAudioElement;
+}
+
 export default function VoiceChat() {
   const [isJoined, setIsJoined] = useState(false);
   const [pin, setPin] = useState("");
@@ -280,14 +308,15 @@ export default function VoiceChat() {
   const [isMuted, setIsMuted] = useState(false);
   const [volume, setVolume] = useState(80);
   const [audioLevel, setAudioLevel] = useState(0);
-  const [peerConnected, setPeerConnected] = useState(false);
+  const [connectedPeers, setConnectedPeers] = useState(0);
+  const [totalInRoom, setTotalInRoom] = useState(1);
 
   const urlPin = new URLSearchParams(window.location.search).get("pin") || undefined;
 
   const wsRef = useRef<WebSocket | null>(null);
-  const pcRef = useRef<RTCPeerConnection | null>(null);
+  const peerConnectionsRef = useRef<Map<string, PeerConnection>>(new Map());
   const localStreamRef = useRef<MediaStream | null>(null);
-  const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
+  const audioContainerRef = useRef<HTMLDivElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationFrameRef = useRef<number>(0);
@@ -295,15 +324,43 @@ export default function VoiceChat() {
   const reconnectTimeoutRef = useRef<number>(0);
   const isJoinedRef = useRef(false);
   const shouldReconnectRef = useRef(true);
+  const volumeRef = useRef(volume);
+
+  useEffect(() => {
+    volumeRef.current = volume;
+    peerConnectionsRef.current.forEach(({ audioElement }) => {
+      audioElement.volume = volume / 100;
+    });
+  }, [volume]);
+
+  const updateConnectionCount = useCallback(() => {
+    let connected = 0;
+    peerConnectionsRef.current.forEach(({ pc }) => {
+      if (pc.connectionState === "connected") {
+        connected++;
+      }
+    });
+    setConnectedPeers(connected);
+    setTotalInRoom(peerConnectionsRef.current.size + 1);
+    
+    if (connected > 0) {
+      setStatus("connected");
+    } else if (peerConnectionsRef.current.size > 0) {
+      setStatus("connecting");
+    } else {
+      setStatus("waiting");
+    }
+  }, []);
 
   const cleanupWebRTC = useCallback(() => {
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
     }
-    if (pcRef.current) {
-      pcRef.current.close();
-      pcRef.current = null;
-    }
+    peerConnectionsRef.current.forEach(({ pc, audioElement }) => {
+      pc.close();
+      audioElement.remove();
+    });
+    peerConnectionsRef.current.clear();
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(track => track.stop());
       localStreamRef.current = null;
@@ -313,6 +370,8 @@ export default function VoiceChat() {
       audioContextRef.current = null;
     }
     analyserRef.current = null;
+    setConnectedPeers(0);
+    setTotalInRoom(1);
   }, []);
 
   const setupAudioAnalyzer = useCallback((stream: MediaStream) => {
@@ -335,13 +394,28 @@ export default function VoiceChat() {
     updateLevel();
   }, []);
 
-  const createPeerConnection = useCallback((remotePeerId: string) => {
+  const createPeerConnection = useCallback((remotePeerId: string): RTCPeerConnection => {
+    if (peerConnectionsRef.current.has(remotePeerId)) {
+      const existing = peerConnectionsRef.current.get(remotePeerId)!;
+      existing.pc.close();
+      existing.audioElement.remove();
+      peerConnectionsRef.current.delete(remotePeerId);
+    }
+
     const pc = new RTCPeerConnection({
       iceServers: [
         { urls: "stun:stun.l.google.com:19302" },
         { urls: "stun:stun1.l.google.com:19302" },
       ],
     });
+
+    const audioElement = document.createElement("audio");
+    audioElement.autoplay = true;
+    audioElement.setAttribute("playsinline", "true");
+    audioElement.volume = volumeRef.current / 100;
+    audioContainerRef.current?.appendChild(audioElement);
+
+    peerConnectionsRef.current.set(remotePeerId, { pc, audioElement });
 
     pc.onicecandidate = (event) => {
       if (event.candidate && wsRef.current?.readyState === WebSocket.OPEN) {
@@ -354,19 +428,11 @@ export default function VoiceChat() {
     };
 
     pc.ontrack = (event) => {
-      if (remoteAudioRef.current) {
-        remoteAudioRef.current.srcObject = event.streams[0];
-        remoteAudioRef.current.volume = volume / 100;
-      }
+      audioElement.srcObject = event.streams[0];
     };
 
     pc.onconnectionstatechange = () => {
-      if (pc.connectionState === "connected") {
-        setPeerConnected(true);
-        setStatus("connected");
-      } else if (pc.connectionState === "disconnected" || pc.connectionState === "failed") {
-        setPeerConnected(false);
-      }
+      updateConnectionCount();
     };
 
     if (localStreamRef.current) {
@@ -375,9 +441,19 @@ export default function VoiceChat() {
       });
     }
 
-    pcRef.current = pc;
+    updateConnectionCount();
     return pc;
-  }, [volume]);
+  }, [updateConnectionCount]);
+
+  const removePeer = useCallback((peerId: string) => {
+    const peerData = peerConnectionsRef.current.get(peerId);
+    if (peerData) {
+      peerData.pc.close();
+      peerData.audioElement.remove();
+      peerConnectionsRef.current.delete(peerId);
+      updateConnectionCount();
+    }
+  }, [updateConnectionCount]);
 
   const handleJoin = useCallback(async (enteredPin: string) => {
     setError(undefined);
@@ -419,6 +495,7 @@ export default function VoiceChat() {
             if (message.success) {
               isJoinedRef.current = true;
               setIsJoined(true);
+              setTotalInRoom(message.roomSize);
               setStatus(message.roomSize > 1 ? "connected" : "waiting");
             } else {
               setError(message.error || "Failed to join");
@@ -452,25 +529,24 @@ export default function VoiceChat() {
             break;
           }
 
-          case "answer":
-            if (pcRef.current) {
-              await pcRef.current.setRemoteDescription(new RTCSessionDescription(message.answer));
+          case "answer": {
+            const peerData = peerConnectionsRef.current.get(message.from);
+            if (peerData) {
+              await peerData.pc.setRemoteDescription(new RTCSessionDescription(message.answer));
             }
             break;
+          }
 
-          case "ice-candidate":
-            if (pcRef.current) {
-              await pcRef.current.addIceCandidate(new RTCIceCandidate(message.candidate));
+          case "ice-candidate": {
+            const peerData = peerConnectionsRef.current.get(message.from);
+            if (peerData) {
+              await peerData.pc.addIceCandidate(new RTCIceCandidate(message.candidate));
             }
             break;
+          }
 
           case "peer-left":
-            setPeerConnected(false);
-            setStatus("waiting");
-            if (pcRef.current) {
-              pcRef.current.close();
-              pcRef.current = null;
-            }
+            removePeer(message.peerId);
             break;
         }
       };
@@ -498,7 +574,7 @@ export default function VoiceChat() {
       setStatus("disconnected");
       cleanupWebRTC();
     }
-  }, [cleanupWebRTC, createPeerConnection, setupAudioAnalyzer]);
+  }, [cleanupWebRTC, createPeerConnection, removePeer, setupAudioAnalyzer]);
 
   const handleDisconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -513,7 +589,8 @@ export default function VoiceChat() {
     shouldReconnectRef.current = false;
     setIsJoined(false);
     setStatus("disconnected");
-    setPeerConnected(false);
+    setConnectedPeers(0);
+    setTotalInRoom(1);
     setAudioLevel(0);
     setPin("");
   }, [cleanupWebRTC]);
@@ -530,9 +607,6 @@ export default function VoiceChat() {
 
   const handleVolumeChange = useCallback((value: number) => {
     setVolume(value);
-    if (remoteAudioRef.current) {
-      remoteAudioRef.current.volume = value / 100;
-    }
   }, []);
 
   useEffect(() => {
@@ -549,7 +623,7 @@ export default function VoiceChat() {
 
   return (
     <>
-      <audio ref={remoteAudioRef} autoPlay playsInline />
+      <div ref={audioContainerRef} style={{ display: "none" }} />
       {!isJoined ? (
         <PinEntry onSubmit={handleJoin} error={error} initialPin={urlPin} />
       ) : (
@@ -558,7 +632,8 @@ export default function VoiceChat() {
           isMuted={isMuted}
           volume={volume}
           audioLevel={audioLevel}
-          peerConnected={peerConnected}
+          connectedPeers={connectedPeers}
+          totalInRoom={totalInRoom}
           onMuteToggle={handleMuteToggle}
           onVolumeChange={handleVolumeChange}
           onDisconnect={handleDisconnect}
