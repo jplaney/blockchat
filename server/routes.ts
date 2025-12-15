@@ -5,17 +5,108 @@ import { WebSocketServer, WebSocket } from "ws";
 interface Room {
   pin: string;
   peers: Map<string, WebSocket>;
+  createdAt: number;
+}
+
+interface RateLimitEntry {
+  attempts: number;
+  lockedUntil: number | null;
 }
 
 const rooms = new Map<string, Room>();
 const ROOM_CAPACITY = 4;
+const ROOM_EXPIRATION_MS = 4 * 60 * 60 * 1000; // 4 hours
+const RATE_LIMIT_MAX_ATTEMPTS = 5;
+const RATE_LIMIT_LOCKOUT_MS = 5 * 60 * 1000; // 5 minutes
+
+// Rate limiting by IP/connection
+const rateLimitMap = new Map<string, RateLimitEntry>();
 
 // Single family room lock - once 2 users connect, this PIN becomes the only allowed room
 let lockedPin: string | null = null;
+let lockedRoomCreatedAt: number | null = null;
+
+// Check and expire old rooms periodically
+function checkRoomExpiration() {
+  const now = Date.now();
+  
+  // Check if locked room has expired
+  if (lockedPin && lockedRoomCreatedAt) {
+    if (now - lockedRoomCreatedAt >= ROOM_EXPIRATION_MS) {
+      const room = rooms.get(lockedPin);
+      if (room) {
+        // Notify all peers and close connections
+        room.peers.forEach((ws) => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ 
+              type: "session-expired",
+              message: "Session expired after 4 hours. Please start a new session."
+            }));
+            ws.close();
+          }
+        });
+        rooms.delete(lockedPin);
+        console.log(`Room expired after 4 hours: ${lockedPin}`);
+      }
+      lockedPin = null;
+      lockedRoomCreatedAt = null;
+    }
+  }
+  
+  // Clean up old rate limit entries
+  rateLimitMap.forEach((entry, key) => {
+    if (entry.lockedUntil && now > entry.lockedUntil) {
+      rateLimitMap.delete(key);
+    }
+  });
+}
+
+// Run expiration check every minute
+setInterval(checkRoomExpiration, 60 * 1000);
+
+function checkRateLimit(connectionId: string): { allowed: boolean; error?: string; remainingTime?: number } {
+  const now = Date.now();
+  const entry = rateLimitMap.get(connectionId);
+  
+  if (entry) {
+    // Check if currently locked out
+    if (entry.lockedUntil && now < entry.lockedUntil) {
+      const remainingSeconds = Math.ceil((entry.lockedUntil - now) / 1000);
+      return { 
+        allowed: false, 
+        error: `Too many failed attempts. Please wait ${remainingSeconds} seconds.`,
+        remainingTime: remainingSeconds
+      };
+    }
+    
+    // Reset if lockout has expired
+    if (entry.lockedUntil && now >= entry.lockedUntil) {
+      rateLimitMap.delete(connectionId);
+    }
+  }
+  
+  return { allowed: true };
+}
+
+function recordFailedAttempt(connectionId: string): void {
+  const entry = rateLimitMap.get(connectionId) || { attempts: 0, lockedUntil: null };
+  entry.attempts++;
+  
+  if (entry.attempts >= RATE_LIMIT_MAX_ATTEMPTS) {
+    entry.lockedUntil = Date.now() + RATE_LIMIT_LOCKOUT_MS;
+    console.log(`Rate limit lockout for connection: ${connectionId}`);
+  }
+  
+  rateLimitMap.set(connectionId, entry);
+}
+
+function clearRateLimit(connectionId: string): void {
+  rateLimitMap.delete(connectionId);
+}
 
 function getOrCreateRoom(pin: string): Room {
   if (!rooms.has(pin)) {
-    rooms.set(pin, { pin, peers: new Map() });
+    rooms.set(pin, { pin, peers: new Map(), createdAt: Date.now() });
   }
   return rooms.get(pin)!;
 }
@@ -51,6 +142,7 @@ function lockRoomIfNeeded(pin: string) {
   // Lock the room once 2 or more users are connected
   if (room && room.peers.size >= 2 && lockedPin === null) {
     lockedPin = pin;
+    lockedRoomCreatedAt = room.createdAt;
     console.log(`Room locked to PIN: ${pin}`);
   }
 }
@@ -59,6 +151,7 @@ function unlockRoomIfEmpty(pin: string) {
   // If the locked room is being deleted, unlock the system
   if (lockedPin === pin && !rooms.has(pin)) {
     lockedPin = null;
+    lockedRoomCreatedAt = null;
     console.log("Room unlocked - family session ended");
   }
 }
@@ -86,9 +179,14 @@ export async function registerRoutes(
 ): Promise<Server> {
   const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
 
-  wss.on("connection", (ws) => {
+  wss.on("connection", (ws, req) => {
     let currentPin: string | null = null;
     let currentPeerId: string | null = null;
+    
+    // Get client IP for rate limiting (use X-Forwarded-For if behind proxy, otherwise use socket address)
+    const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() 
+      || req.socket.remoteAddress 
+      || 'unknown';
 
     ws.on("message", (data) => {
       try {
@@ -98,11 +196,22 @@ export async function registerRoutes(
           case "join": {
             const { pin, peerId } = message;
             
-            if (!pin || !/^\d{4}$/.test(pin)) {
+            if (!pin || !/^\d{6}$/.test(pin)) {
               ws.send(JSON.stringify({
                 type: "joined",
                 success: false,
-                error: "Invalid PIN. Please use 4 digits.",
+                error: "Invalid PIN. Please use 6 digits.",
+              }));
+              return;
+            }
+
+            // Check rate limiting using client IP
+            const rateLimitCheck = checkRateLimit(clientIp);
+            if (!rateLimitCheck.allowed) {
+              ws.send(JSON.stringify({
+                type: "joined",
+                success: false,
+                error: rateLimitCheck.error,
               }));
               return;
             }
@@ -110,6 +219,8 @@ export async function registerRoutes(
             // Check if this PIN can join (single room restriction)
             const joinCheck = canJoinRoom(pin);
             if (!joinCheck.allowed) {
+              // Record failed attempt for rate limiting (wrong PIN when room is locked)
+              recordFailedAttempt(clientIp);
               ws.send(JSON.stringify({
                 type: "joined",
                 success: false,
@@ -117,6 +228,9 @@ export async function registerRoutes(
               }));
               return;
             }
+
+            // Clear rate limit on successful join
+            clearRateLimit(clientIp);
 
             currentPin = pin;
             currentPeerId = peerId;

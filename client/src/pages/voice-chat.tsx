@@ -10,16 +10,16 @@ import minecraftGrass from "@assets/generated_images/minecraft_grass_block_patte
 
 function PinEntry({ onSubmit, error, initialPin }: { onSubmit: (pin: string) => void; error?: string; initialPin?: string }) {
   const [pin, setPin] = useState(() => {
-    if (initialPin && /^\d{4}$/.test(initialPin)) {
+    if (initialPin && /^\d{6}$/.test(initialPin)) {
       return initialPin.split("");
     }
-    return ["", "", "", ""];
+    return ["", "", "", "", "", ""];
   });
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const autoJoinedRef = useRef(false);
 
   useEffect(() => {
-    if (initialPin && /^\d{4}$/.test(initialPin) && !autoJoinedRef.current) {
+    if (initialPin && /^\d{6}$/.test(initialPin) && !autoJoinedRef.current) {
       autoJoinedRef.current = true;
       onSubmit(initialPin);
     }
@@ -32,7 +32,7 @@ function PinEntry({ onSubmit, error, initialPin }: { onSubmit: (pin: string) => 
     newPin[index] = value.slice(-1);
     setPin(newPin);
 
-    if (value && index < 3) {
+    if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
   };
@@ -48,14 +48,14 @@ function PinEntry({ onSubmit, error, initialPin }: { onSubmit: (pin: string) => 
 
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
-    const pastedData = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 4);
+    const pastedData = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
     const newPin = [...pin];
     for (let i = 0; i < pastedData.length; i++) {
       newPin[i] = pastedData[i];
     }
     setPin(newPin);
-    if (pastedData.length === 4) {
-      inputRefs.current[3]?.focus();
+    if (pastedData.length === 6) {
+      inputRefs.current[5]?.focus();
     }
   };
 
@@ -83,11 +83,11 @@ function PinEntry({ onSubmit, error, initialPin }: { onSubmit: (pin: string) => 
             <h1 className="text-xl font-bold text-amber-900 dark:text-amber-100" style={{ fontFamily: "'Press Start 2P', monospace, system-ui" }}>
               Nelle's Chat-O-Matic
             </h1>
-            <p className="text-amber-700 dark:text-amber-300 text-sm">Enter your 4-digit PIN to join</p>
+            <p className="text-amber-700 dark:text-amber-300 text-sm">Enter your 6-digit PIN to join</p>
             <p className="text-xs text-amber-600 dark:text-amber-400">Up to 4 players can join!</p>
           </div>
 
-          <div className="flex justify-center gap-3" onPaste={handlePaste}>
+          <div className="flex justify-center gap-2" onPaste={handlePaste}>
             {pin.map((digit, index) => (
               <input
                 key={index}
@@ -99,7 +99,7 @@ function PinEntry({ onSubmit, error, initialPin }: { onSubmit: (pin: string) => 
                 onChange={(e) => handleChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
                 data-testid={`input-pin-${index}`}
-                className="w-14 h-16 text-center text-2xl font-bold border-4 bg-stone-100 dark:bg-stone-700 text-stone-800 dark:text-stone-100 border-stone-400 dark:border-stone-500 focus:border-green-500 focus:ring-2 focus:ring-green-500/30 outline-none transition-all"
+                className="w-11 h-14 text-center text-xl font-bold border-4 bg-stone-100 dark:bg-stone-700 text-stone-800 dark:text-stone-100 border-stone-400 dark:border-stone-500 focus:border-green-500 focus:ring-2 focus:ring-green-500/30 outline-none transition-all"
                 style={{ 
                   fontFamily: "'Press Start 2P', monospace, system-ui",
                   borderRadius: '0px'

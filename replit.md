@@ -29,6 +29,9 @@ Preferred communication style: Simple, everyday language.
 - **Room Management**: In-memory room storage using PIN codes as identifiers
 - **Single Room Lock**: Once 2 users connect, that room is locked as the only active room - preventing others from creating new rooms with different PINs. The system resets when all users leave.
 - **Room Capacity**: Maximum 4 players per room
+- **Room Expiration**: Sessions automatically expire after 4 hours
+- **PIN Security**: 6-digit PINs (1 million combinations)
+- **Rate Limiting**: 5 failed PIN attempts trigger a 5-minute lockout
 - **Peer Connection**: WebRTC for direct peer-to-peer voice communication (mesh network)
 - **Message Types**: Join, offer, answer, ICE candidate exchange
 
