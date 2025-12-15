@@ -1,10 +1,17 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
+import type { AvatarId, PeerInfo } from "@shared/schema";
+
+interface PeerData {
+  ws: WebSocket;
+  nickname: string;
+  avatar: AvatarId;
+}
 
 interface Room {
   pin: string;
-  peers: Map<string, WebSocket>;
+  peers: Map<string, PeerData>;
   createdAt: number;
 }
 
@@ -36,13 +43,13 @@ function checkRoomExpiration() {
       const room = rooms.get(lockedPin);
       if (room) {
         // Notify all peers and close connections
-        room.peers.forEach((ws) => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ 
+        room.peers.forEach((peerData) => {
+          if (peerData.ws.readyState === WebSocket.OPEN) {
+            peerData.ws.send(JSON.stringify({ 
               type: "session-expired",
               message: "Session expired after 4 hours. Please start a new session."
             }));
-            ws.close();
+            peerData.ws.close();
           }
         });
         rooms.delete(lockedPin);
@@ -164,9 +171,9 @@ function removeFromRoom(pin: string, peerId: string) {
       rooms.delete(pin);
       unlockRoomIfEmpty(pin);
     } else {
-      room.peers.forEach((ws) => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: "peer-left", peerId }));
+      room.peers.forEach((peerData) => {
+        if (peerData.ws.readyState === WebSocket.OPEN) {
+          peerData.ws.send(JSON.stringify({ type: "peer-left", peerId }));
         }
       });
     }
@@ -235,18 +242,31 @@ export async function registerRoutes(
             currentPin = pin;
             currentPeerId = peerId;
 
+            const nickname = message.nickname || 'Player';
+            const avatar = message.avatar || 'steve';
+            
             const room = getOrCreateRoom(pin);
             
-            room.peers.forEach((peerWs, existingPeerId) => {
-              if (peerWs.readyState === WebSocket.OPEN) {
-                peerWs.send(JSON.stringify({
+            // Collect existing peers info to send to the new joiner
+            const existingPeers: PeerInfo[] = [];
+            room.peers.forEach((peerData, existingPeerId) => {
+              existingPeers.push({
+                peerId: existingPeerId,
+                nickname: peerData.nickname,
+                avatar: peerData.avatar,
+              });
+              // Notify existing peers about the new joiner
+              if (peerData.ws.readyState === WebSocket.OPEN) {
+                peerData.ws.send(JSON.stringify({
                   type: "peer-joined",
                   peerId,
+                  nickname,
+                  avatar,
                 }));
               }
             });
 
-            room.peers.set(peerId, ws);
+            room.peers.set(peerId, { ws, nickname, avatar });
             
             // Lock the room once 2 users are connected
             lockRoomIfNeeded(pin);
@@ -255,6 +275,7 @@ export async function registerRoutes(
               type: "joined",
               success: true,
               roomSize: room.peers.size,
+              existingPeers,
             }));
             break;
           }
@@ -266,9 +287,9 @@ export async function registerRoutes(
             const room = rooms.get(currentPin);
             if (!room) return;
 
-            const targetWs = room.peers.get(message.to);
-            if (targetWs && targetWs.readyState === WebSocket.OPEN) {
-              targetWs.send(JSON.stringify({
+            const targetPeer = room.peers.get(message.to);
+            if (targetPeer && targetPeer.ws.readyState === WebSocket.OPEN) {
+              targetPeer.ws.send(JSON.stringify({
                 ...message,
                 from: currentPeerId,
               }));

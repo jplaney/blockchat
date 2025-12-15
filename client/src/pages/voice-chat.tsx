@@ -2,28 +2,38 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Phone, PhoneOff, Mic, MicOff, Volume2, VolumeX, Users } from "lucide-react";
-import type { ConnectionStatus, SignalingMessage } from "@shared/schema";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Phone, PhoneOff, Mic, MicOff, Volume2, VolumeX, Users, Wifi, WifiOff, Signal, SignalLow, SignalMedium, SignalHigh } from "lucide-react";
+import type { ConnectionStatus, SignalingMessage, AvatarId, PeerInfo } from "@shared/schema";
+import { AVATAR_OPTIONS } from "@shared/schema";
 import minecraftCharacters from "@assets/generated_images/minecraft_characters_chatting_together.png";
 import minecraftMic from "@assets/generated_images/pixel_art_microphone_icon.png";
 import minecraftGrass from "@assets/generated_images/minecraft_grass_block_pattern.png";
 
-function PinEntry({ onSubmit, error, initialPin }: { onSubmit: (pin: string) => void; error?: string; initialPin?: string }) {
+function PinEntry({ onSubmit, error, initialPin }: { 
+  onSubmit: (pin: string, nickname: string, avatar: AvatarId) => void; 
+  error?: string; 
+  initialPin?: string 
+}) {
   const [pin, setPin] = useState(() => {
     if (initialPin && /^\d{6}$/.test(initialPin)) {
       return initialPin.split("");
     }
     return ["", "", "", "", "", ""];
   });
+  const [nickname, setNickname] = useState("");
+  const [selectedAvatar, setSelectedAvatar] = useState<AvatarId>("steve");
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const autoJoinedRef = useRef(false);
 
   useEffect(() => {
-    if (initialPin && /^\d{6}$/.test(initialPin) && !autoJoinedRef.current) {
+    if (initialPin && /^\d{6}$/.test(initialPin) && !autoJoinedRef.current && nickname.trim()) {
       autoJoinedRef.current = true;
-      onSubmit(initialPin);
+      onSubmit(initialPin, nickname.trim() || "Player", selectedAvatar);
     }
-  }, [initialPin, onSubmit]);
+  }, [initialPin, onSubmit, nickname, selectedAvatar]);
 
   const handleChange = (index: number, value: string) => {
     if (!/^\d*$/.test(value)) return;
@@ -41,8 +51,8 @@ function PinEntry({ onSubmit, error, initialPin }: { onSubmit: (pin: string) => 
     if (e.key === "Backspace" && !pin[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
-    if (e.key === "Enter" && pin.every(d => d)) {
-      onSubmit(pin.join(""));
+    if (e.key === "Enter" && pin.every(d => d) && nickname.trim()) {
+      onSubmit(pin.join(""), nickname.trim(), selectedAvatar);
     }
   };
 
@@ -59,7 +69,7 @@ function PinEntry({ onSubmit, error, initialPin }: { onSubmit: (pin: string) => 
     }
   };
 
-  const isComplete = pin.every(d => d);
+  const isComplete = pin.every(d => d) && nickname.trim().length > 0;
 
   return (
     <div 
@@ -72,40 +82,78 @@ function PinEntry({ onSubmit, error, initialPin }: { onSubmit: (pin: string) => 
     >
       <div className="absolute inset-0 bg-gradient-to-b from-sky-400/80 to-sky-600/80 dark:from-sky-900/90 dark:to-slate-900/95" />
       <Card className="w-full max-w-md relative z-10 border-4 border-amber-800 dark:border-amber-900 bg-amber-50/95 dark:bg-stone-800/95">
-        <CardContent className="p-8 space-y-6">
-          <div className="text-center space-y-3">
-            <img 
-              src={minecraftCharacters} 
-              alt="Minecraft characters chatting" 
-              className="w-full max-w-xs mx-auto rounded-lg"
-              style={{ imageRendering: 'pixelated' }}
-            />
+        <CardContent className="p-6 space-y-5">
+          <div className="text-center space-y-2">
             <h1 className="text-xl font-bold text-amber-900 dark:text-amber-100" style={{ fontFamily: "'Press Start 2P', monospace, system-ui" }}>
               Nelle's Chat-O-Matic
             </h1>
-            <p className="text-amber-700 dark:text-amber-300 text-sm">Enter your 6-digit PIN to join</p>
             <p className="text-xs text-amber-600 dark:text-amber-400">Up to 4 people can join!</p>
           </div>
 
-          <div className="flex justify-center gap-2" onPaste={handlePaste}>
-            {pin.map((digit, index) => (
-              <input
-                key={index}
-                ref={(el) => { inputRefs.current[index] = el; }}
-                type="text"
-                inputMode="numeric"
-                maxLength={1}
-                value={digit}
-                onChange={(e) => handleChange(index, e.target.value)}
-                onKeyDown={(e) => handleKeyDown(index, e)}
-                data-testid={`input-pin-${index}`}
-                className="w-11 h-14 text-center text-xl font-bold border-4 bg-stone-100 dark:bg-stone-700 text-stone-800 dark:text-stone-100 border-stone-400 dark:border-stone-500 focus:border-green-500 focus:ring-2 focus:ring-green-500/30 outline-none transition-all"
-                style={{ 
-                  fontFamily: "'Press Start 2P', monospace, system-ui",
-                  borderRadius: '0px'
-                }}
-              />
-            ))}
+          <div className="space-y-2">
+            <Label className="text-amber-700 dark:text-amber-300 text-sm font-medium">Your Name</Label>
+            <Input
+              type="text"
+              placeholder="Enter your name..."
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value.slice(0, 12))}
+              maxLength={12}
+              data-testid="input-nickname"
+              className="h-12 text-lg bg-stone-100 dark:bg-stone-700 border-4 border-stone-400 dark:border-stone-500 text-stone-800 dark:text-stone-100"
+              style={{ borderRadius: '0px' }}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-amber-700 dark:text-amber-300 text-sm font-medium">Choose Your Character</Label>
+            <div className="grid grid-cols-6 gap-2">
+              {AVATAR_OPTIONS.map((avatar) => (
+                <button
+                  key={avatar.id}
+                  onClick={() => setSelectedAvatar(avatar.id)}
+                  data-testid={`button-avatar-${avatar.id}`}
+                  className={`w-full aspect-square flex items-center justify-center border-4 transition-all ${
+                    selectedAvatar === avatar.id 
+                      ? "border-green-500 bg-green-100 dark:bg-green-900/50" 
+                      : "border-stone-400 dark:border-stone-500 bg-stone-100 dark:bg-stone-700"
+                  }`}
+                  style={{ borderRadius: '0px' }}
+                  title={avatar.name}
+                >
+                  <div 
+                    className="w-6 h-6" 
+                    style={{ backgroundColor: avatar.color, borderRadius: '0px' }}
+                  />
+                </button>
+              ))}
+            </div>
+            <p className="text-center text-xs text-amber-600 dark:text-amber-400">
+              {AVATAR_OPTIONS.find(a => a.id === selectedAvatar)?.name}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-amber-700 dark:text-amber-300 text-sm font-medium">Room PIN</Label>
+            <div className="flex justify-center gap-2" onPaste={handlePaste}>
+              {pin.map((digit, index) => (
+                <input
+                  key={index}
+                  ref={(el) => { inputRefs.current[index] = el; }}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => handleChange(index, e.target.value)}
+                  onKeyDown={(e) => handleKeyDown(index, e)}
+                  data-testid={`input-pin-${index}`}
+                  className="w-10 h-12 text-center text-lg font-bold border-4 bg-stone-100 dark:bg-stone-700 text-stone-800 dark:text-stone-100 border-stone-400 dark:border-stone-500 focus:border-green-500 focus:ring-2 focus:ring-green-500/30 outline-none transition-all"
+                  style={{ 
+                    fontFamily: "'Press Start 2P', monospace, system-ui",
+                    borderRadius: '0px'
+                  }}
+                />
+              ))}
+            </div>
           </div>
 
           {error && (
@@ -115,7 +163,7 @@ function PinEntry({ onSubmit, error, initialPin }: { onSubmit: (pin: string) => 
           )}
 
           <Button
-            onClick={() => onSubmit(pin.join(""))}
+            onClick={() => onSubmit(pin.join(""), nickname.trim(), selectedAvatar)}
             disabled={!isComplete}
             className="w-full h-14 text-lg bg-green-600 hover:bg-green-700 border-4 border-green-800 text-white font-bold"
             data-testid="button-join"
@@ -124,10 +172,6 @@ function PinEntry({ onSubmit, error, initialPin }: { onSubmit: (pin: string) => 
             <Phone className="w-5 h-5 mr-2" />
             Join Chat
           </Button>
-
-          <p className="text-center text-xs text-amber-600 dark:text-amber-400">
-            Press <kbd className="px-1.5 py-0.5 bg-stone-300 dark:bg-stone-600 text-stone-700 dark:text-stone-200 font-mono border-2 border-stone-400 dark:border-stone-500" style={{ borderRadius: '0px' }}>Enter</kbd> to join
-          </p>
         </CardContent>
       </Card>
     </div>
@@ -198,11 +242,39 @@ function StatusIndicator({ status, connectedPeers }: { status: ConnectionStatus;
   );
 }
 
-function ParticipantIndicator({ count }: { count: number }) {
+interface ConnectedPeer extends PeerInfo {
+  quality: 'good' | 'medium' | 'poor' | 'unknown';
+}
+
+function ConnectionQualityIcon({ quality }: { quality: 'good' | 'medium' | 'poor' | 'unknown' }) {
+  switch (quality) {
+    case 'good':
+      return <SignalHigh className="w-4 h-4 text-green-500" />;
+    case 'medium':
+      return <SignalMedium className="w-4 h-4 text-amber-500" />;
+    case 'poor':
+      return <SignalLow className="w-4 h-4 text-red-500" />;
+    default:
+      return <Signal className="w-4 h-4 text-stone-400" />;
+  }
+}
+
+function PeerCard({ peer }: { peer: ConnectedPeer }) {
+  const avatarColor = AVATAR_OPTIONS.find(a => a.id === peer.avatar)?.color || '#666';
   return (
-    <div className="flex items-center justify-center gap-2 text-amber-700 dark:text-amber-300" data-testid="participant-count">
-      <Users className="w-4 h-4" />
-      <span className="text-sm font-medium">{count}/4 people in room</span>
+    <div 
+      className="flex items-center gap-3 p-2 bg-stone-100 dark:bg-stone-700 border-2 border-stone-300 dark:border-stone-600"
+      style={{ borderRadius: '0px' }}
+      data-testid={`peer-card-${peer.peerId}`}
+    >
+      <div 
+        className="w-8 h-8 flex-shrink-0" 
+        style={{ backgroundColor: avatarColor, borderRadius: '0px' }}
+      />
+      <span className="flex-1 text-sm font-medium text-stone-800 dark:text-stone-100 truncate">
+        {peer.nickname}
+      </span>
+      <ConnectionQualityIcon quality={peer.quality} />
     </div>
   );
 }
@@ -215,9 +287,12 @@ function VoiceChatInterface({
   connectedPeers,
   totalInRoom,
   currentPin,
+  peers,
+  pushToTalk,
   onMuteToggle,
   onVolumeChange,
   onDisconnect,
+  onPushToTalkChange,
 }: {
   status: ConnectionStatus;
   isMuted: boolean;
@@ -226,21 +301,15 @@ function VoiceChatInterface({
   connectedPeers: number;
   totalInRoom: number;
   currentPin: string;
+  peers: ConnectedPeer[];
+  pushToTalk: boolean;
   onMuteToggle: () => void;
   onVolumeChange: (value: number) => void;
   onDisconnect: () => void;
+  onPushToTalkChange: (enabled: boolean) => void;
 }) {
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === "Space" && e.target === document.body) {
-        e.preventDefault();
-        onMuteToggle();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onMuteToggle]);
-
+  // Keyboard handling is done in the parent VoiceChat component
+  // using refs for stable state access
   return (
     <div 
       className="min-h-screen flex items-center justify-center p-4"
@@ -268,12 +337,22 @@ function VoiceChatInterface({
               Nelle's Chat-O-Matic
             </h1>
             <StatusIndicator status={status} connectedPeers={connectedPeers} />
-            <ParticipantIndicator count={totalInRoom} />
             <div className="pt-2 flex items-center justify-center gap-2" data-testid="pin-display">
               <span className="text-xs text-amber-600 dark:text-amber-400">Room PIN:</span>
               <span className="font-mono font-bold text-amber-900 dark:text-amber-100 tracking-wider">{currentPin}</span>
             </div>
           </div>
+
+          {peers.length > 0 && (
+            <div className="space-y-2">
+              <Label className="text-amber-700 dark:text-amber-300 text-xs font-medium">Connected ({peers.length})</Label>
+              <div className="space-y-1">
+                {peers.map(peer => (
+                  <PeerCard key={peer.peerId} peer={peer} />
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="py-4">
             <AudioLevelMeter level={isMuted ? 0 : audioLevel} />
@@ -332,8 +411,25 @@ function VoiceChatInterface({
             </Button>
           </div>
 
+          <div className="flex items-center justify-between gap-4 p-3 bg-stone-100 dark:bg-stone-700 border-2 border-stone-300 dark:border-stone-600" style={{ borderRadius: '0px' }}>
+            <div className="flex flex-col gap-0.5">
+              <Label htmlFor="ptt-switch" className="text-sm font-medium text-stone-800 dark:text-stone-100">
+                Push to Talk
+              </Label>
+              <span className="text-xs text-stone-600 dark:text-stone-400">
+                {pushToTalk ? "Hold Space to talk" : "Space toggles mute"}
+              </span>
+            </div>
+            <Switch
+              id="ptt-switch"
+              checked={pushToTalk}
+              onCheckedChange={onPushToTalkChange}
+              data-testid="switch-push-to-talk"
+            />
+          </div>
+
           <p className="text-center text-xs text-amber-600 dark:text-amber-400">
-            Press <kbd className="px-1.5 py-0.5 bg-stone-300 dark:bg-stone-600 text-stone-700 dark:text-stone-200 font-mono border-2 border-stone-400 dark:border-stone-500" style={{ borderRadius: '0px' }}>Space</kbd> to toggle mute
+            Press <kbd className="px-1.5 py-0.5 bg-stone-300 dark:bg-stone-600 text-stone-700 dark:text-stone-200 font-mono border-2 border-stone-400 dark:border-stone-500" style={{ borderRadius: '0px' }}>Space</kbd> {pushToTalk ? "and hold to talk" : "to toggle mute"}
           </p>
         </CardContent>
       </Card>
@@ -341,26 +437,32 @@ function VoiceChatInterface({
   );
 }
 
-interface PeerConnection {
+interface PeerConnectionData {
   pc: RTCPeerConnection;
   audioElement: HTMLAudioElement;
+  nickname: string;
+  avatar: AvatarId;
 }
 
 export default function VoiceChat() {
   const [isJoined, setIsJoined] = useState(false);
   const [pin, setPin] = useState("");
+  const [userNickname, setUserNickname] = useState("");
+  const [userAvatar, setUserAvatar] = useState<AvatarId>("steve");
   const [error, setError] = useState<string>();
   const [status, setStatus] = useState<ConnectionStatus>("disconnected");
   const [isMuted, setIsMuted] = useState(false);
+  const [pushToTalk, setPushToTalk] = useState(false);
   const [volume, setVolume] = useState(80);
   const [audioLevel, setAudioLevel] = useState(0);
   const [connectedPeers, setConnectedPeers] = useState(0);
   const [totalInRoom, setTotalInRoom] = useState(1);
+  const [peers, setPeers] = useState<ConnectedPeer[]>([]);
 
   const urlPin = new URLSearchParams(window.location.search).get("pin") || undefined;
 
   const wsRef = useRef<WebSocket | null>(null);
-  const peerConnectionsRef = useRef<Map<string, PeerConnection>>(new Map());
+  const peerConnectionsRef = useRef<Map<string, PeerConnectionData>>(new Map());
   const localStreamRef = useRef<MediaStream | null>(null);
   const audioContainerRef = useRef<HTMLDivElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -371,6 +473,7 @@ export default function VoiceChat() {
   const isJoinedRef = useRef(false);
   const shouldReconnectRef = useRef(true);
   const volumeRef = useRef(volume);
+  const qualityIntervalRef = useRef<number>(0);
 
   useEffect(() => {
     volumeRef.current = volume;
@@ -396,6 +499,37 @@ export default function VoiceChat() {
     } else {
       setStatus("waiting");
     }
+  }, []);
+
+  const updatePeersDisplay = useCallback(async () => {
+    const updatedPeers: ConnectedPeer[] = [];
+    for (const [peerId, peerData] of peerConnectionsRef.current.entries()) {
+      let quality: 'good' | 'medium' | 'poor' | 'unknown' = 'unknown';
+      
+      try {
+        const stats = await peerData.pc.getStats();
+        stats.forEach((report) => {
+          if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+            const rtt = report.currentRoundTripTime;
+            if (rtt !== undefined) {
+              if (rtt < 0.1) quality = 'good';
+              else if (rtt < 0.3) quality = 'medium';
+              else quality = 'poor';
+            }
+          }
+        });
+      } catch {
+        quality = peerData.pc.connectionState === 'connected' ? 'good' : 'unknown';
+      }
+      
+      updatedPeers.push({
+        peerId,
+        nickname: peerData.nickname,
+        avatar: peerData.avatar,
+        quality,
+      });
+    }
+    setPeers(updatedPeers);
   }, []);
 
   const playChime = useCallback((type: 'join' | 'leave') => {
@@ -434,6 +568,9 @@ export default function VoiceChat() {
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
     }
+    if (qualityIntervalRef.current) {
+      clearInterval(qualityIntervalRef.current);
+    }
     peerConnectionsRef.current.forEach(({ pc, audioElement }) => {
       pc.close();
       audioElement.remove();
@@ -450,6 +587,7 @@ export default function VoiceChat() {
     analyserRef.current = null;
     setConnectedPeers(0);
     setTotalInRoom(1);
+    setPeers([]);
   }, []);
 
   const setupAudioAnalyzer = useCallback((stream: MediaStream) => {
@@ -472,7 +610,7 @@ export default function VoiceChat() {
     updateLevel();
   }, []);
 
-  const createPeerConnection = useCallback((remotePeerId: string): RTCPeerConnection => {
+  const createPeerConnection = useCallback((remotePeerId: string, nickname: string, avatar: AvatarId): RTCPeerConnection => {
     if (peerConnectionsRef.current.has(remotePeerId)) {
       const existing = peerConnectionsRef.current.get(remotePeerId)!;
       existing.pc.close();
@@ -493,7 +631,7 @@ export default function VoiceChat() {
     audioElement.volume = volumeRef.current / 100;
     audioContainerRef.current?.appendChild(audioElement);
 
-    peerConnectionsRef.current.set(remotePeerId, { pc, audioElement });
+    peerConnectionsRef.current.set(remotePeerId, { pc, audioElement, nickname, avatar });
 
     pc.onicecandidate = (event) => {
       if (event.candidate && wsRef.current?.readyState === WebSocket.OPEN) {
@@ -511,6 +649,7 @@ export default function VoiceChat() {
 
     pc.onconnectionstatechange = () => {
       updateConnectionCount();
+      updatePeersDisplay();
     };
 
     if (localStreamRef.current) {
@@ -520,8 +659,9 @@ export default function VoiceChat() {
     }
 
     updateConnectionCount();
+    updatePeersDisplay();
     return pc;
-  }, [updateConnectionCount]);
+  }, [updateConnectionCount, updatePeersDisplay]);
 
   const removePeer = useCallback((peerId: string) => {
     const peerData = peerConnectionsRef.current.get(peerId);
@@ -530,13 +670,16 @@ export default function VoiceChat() {
       peerData.audioElement.remove();
       peerConnectionsRef.current.delete(peerId);
       updateConnectionCount();
+      updatePeersDisplay();
     }
-  }, [updateConnectionCount]);
+  }, [updateConnectionCount, updatePeersDisplay]);
 
-  const handleJoin = useCallback(async (enteredPin: string) => {
+  const handleJoin = useCallback(async (enteredPin: string, nickname: string, avatar: AvatarId) => {
     setError(undefined);
     setStatus("connecting");
     setPin(enteredPin);
+    setUserNickname(nickname);
+    setUserAvatar(avatar);
     shouldReconnectRef.current = true;
 
     try {
@@ -550,6 +693,12 @@ export default function VoiceChat() {
       localStreamRef.current = stream;
       setupAudioAnalyzer(stream);
 
+      // Start push-to-talk muted
+      if (pushToTalk) {
+        stream.getAudioTracks().forEach(track => { track.enabled = false; });
+        setIsMuted(true);
+      }
+
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const wsUrl = `${protocol}//${window.location.host}/ws`;
       const ws = new WebSocket(wsUrl);
@@ -562,6 +711,8 @@ export default function VoiceChat() {
           type: "join",
           pin: enteredPin,
           peerId: peerIdRef.current,
+          nickname,
+          avatar,
         }));
       };
 
@@ -575,6 +726,18 @@ export default function VoiceChat() {
               setIsJoined(true);
               setTotalInRoom(message.roomSize);
               setStatus(message.roomSize > 1 ? "connected" : "waiting");
+              
+              // Create connections for existing peers
+              if (message.existingPeers) {
+                for (const peer of message.existingPeers) {
+                  createPeerConnection(peer.peerId, peer.nickname, peer.avatar);
+                }
+              }
+              
+              // Start connection quality monitoring
+              qualityIntervalRef.current = window.setInterval(() => {
+                updatePeersDisplay();
+              }, 3000);
             } else {
               setError(message.error || "Failed to join");
               setStatus("disconnected");
@@ -584,7 +747,7 @@ export default function VoiceChat() {
 
           case "peer-joined": {
             playChime('join');
-            const pc = createPeerConnection(message.peerId);
+            const pc = createPeerConnection(message.peerId, message.nickname, message.avatar);
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
             ws.send(JSON.stringify({
@@ -596,7 +759,11 @@ export default function VoiceChat() {
           }
 
           case "offer": {
-            const pc = createPeerConnection(message.from);
+            // For offers, we don't have the peer info yet, use placeholder
+            const existingPeer = peerConnectionsRef.current.get(message.from);
+            const peerNickname = existingPeer?.nickname || 'Player';
+            const peerAvatar = existingPeer?.avatar || 'steve';
+            const pc = createPeerConnection(message.from, peerNickname, peerAvatar);
             await pc.setRemoteDescription(new RTCSessionDescription(message.offer));
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
@@ -635,7 +802,7 @@ export default function VoiceChat() {
         if (isJoinedRef.current && shouldReconnectRef.current) {
           setStatus("reconnecting");
           reconnectTimeoutRef.current = window.setTimeout(() => {
-            handleJoin(enteredPin);
+            handleJoin(enteredPin, nickname, avatar);
           }, 3000);
         }
       };
@@ -654,7 +821,7 @@ export default function VoiceChat() {
       setStatus("disconnected");
       cleanupWebRTC();
     }
-  }, [cleanupWebRTC, createPeerConnection, playChime, removePeer, setupAudioAnalyzer]);
+  }, [cleanupWebRTC, createPeerConnection, playChime, pushToTalk, removePeer, setupAudioAnalyzer, updatePeersDisplay]);
 
   const handleDisconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -675,24 +842,85 @@ export default function VoiceChat() {
     setPin("");
   }, [cleanupWebRTC]);
 
+  // Use ref to track current push-to-talk state for stable event handlers
+  const pushToTalkRef = useRef(pushToTalk);
+  useEffect(() => {
+    pushToTalkRef.current = pushToTalk;
+  }, [pushToTalk]);
+
+  // Stable mute toggle that reads directly from audio track state
   const handleMuteToggle = useCallback(() => {
     if (localStreamRef.current) {
       const audioTrack = localStreamRef.current.getAudioTracks()[0];
       if (audioTrack) {
-        audioTrack.enabled = isMuted;
-        setIsMuted(!isMuted);
+        const newEnabled = !audioTrack.enabled;
+        audioTrack.enabled = newEnabled;
+        setIsMuted(!newEnabled);
       }
     }
-  }, [isMuted]);
+  }, []);
 
   const handleVolumeChange = useCallback((value: number) => {
     setVolume(value);
   }, []);
 
+  const handlePushToTalkChange = useCallback((enabled: boolean) => {
+    setPushToTalk(enabled);
+    if (enabled && localStreamRef.current) {
+      // When enabling PTT, mute by default
+      localStreamRef.current.getAudioTracks().forEach(track => { track.enabled = false; });
+      setIsMuted(true);
+    }
+  }, []);
+
+  // Unified keyboard handler using refs for current state
+  useEffect(() => {
+    if (!isJoined) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && !e.repeat && localStreamRef.current) {
+        e.preventDefault();
+        if (pushToTalkRef.current) {
+          // PTT mode: unmute on press
+          localStreamRef.current.getAudioTracks().forEach(track => { track.enabled = true; });
+          setIsMuted(false);
+        } else {
+          // Toggle mode: flip mute state
+          const audioTrack = localStreamRef.current.getAudioTracks()[0];
+          if (audioTrack) {
+            const newEnabled = !audioTrack.enabled;
+            audioTrack.enabled = newEnabled;
+            setIsMuted(!newEnabled);
+          }
+        }
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && localStreamRef.current && pushToTalkRef.current) {
+        e.preventDefault();
+        // PTT mode: mute on release
+        localStreamRef.current.getAudioTracks().forEach(track => { track.enabled = false; });
+        setIsMuted(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [isJoined]);
+
   useEffect(() => {
     return () => {
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (qualityIntervalRef.current) {
+        clearInterval(qualityIntervalRef.current);
       }
       if (wsRef.current) {
         wsRef.current.close();
@@ -715,9 +943,12 @@ export default function VoiceChat() {
           connectedPeers={connectedPeers}
           totalInRoom={totalInRoom}
           currentPin={pin}
+          peers={peers}
+          pushToTalk={pushToTalk}
           onMuteToggle={handleMuteToggle}
           onVolumeChange={handleVolumeChange}
           onDisconnect={handleDisconnect}
+          onPushToTalkChange={handlePushToTalkChange}
         />
       )}
     </>

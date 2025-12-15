@@ -1,8 +1,25 @@
-# Family Voice Chat
+# Nelle's Chat-O-Matic
 
 ## Overview
 
-A parent-child voice chat application that enables simple, secure voice communication for family gaming sessions. Users connect instantly using a 4-digit PIN code to join voice chat rooms. The application prioritizes child-friendly interactions with clear status indicators, large touch targets, and zero learning curve design.
+A Minecraft-themed parent-child voice chat application ("Nelle's Chat-O-Matic") that enables simple, secure voice communication for family gaming sessions. Users connect instantly using a 6-digit PIN code to join voice chat rooms. The application prioritizes child-friendly interactions with clear status indicators, large touch targets, and zero learning curve design.
+
+## Key Features
+
+### Player Customization
+- **Nicknames**: Users enter a display name before joining
+- **Avatar Selection**: 6 Minecraft-themed character avatars (Steve, Alex, Zombie, Creeper, Enderman, Skeleton) displayed as colored squares
+- **Peer Display**: Connected users show with their nickname, avatar color, and connection quality
+
+### Voice Chat Modes
+- **Normal Mode**: Spacebar toggles mute on/off
+- **Push-to-Talk Mode**: Hold spacebar to unmute, release to mute (starts muted)
+- **Audio Feedback**: Join/leave chimes (ascending for join, descending for leave)
+
+### Connection Quality Monitoring
+- **Real-time Stats**: WebRTC getStats() polling every 3 seconds
+- **Visual Indicators**: Signal icons showing good/medium/poor/unknown quality
+- **RTT-based Thresholds**: <100ms=good, <300ms=medium, >300ms=poor
 
 ## User Preferences
 
