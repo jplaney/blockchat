@@ -11,6 +11,22 @@ import { AVATAR_OPTIONS } from "@shared/schema";
 import minecraftCharacters from "@assets/generated_images/minecraft_characters_chatting_together.png";
 import minecraftMic from "@assets/generated_images/pixel_art_microphone_icon.png";
 import minecraftGrass from "@assets/generated_images/minecraft_grass_block_pattern.png";
+import avatarSteve from "@assets/generated_images/minecraft_steve_style_avatar.png";
+import avatarAlex from "@assets/generated_images/minecraft_alex_style_avatar.png";
+import avatarZombie from "@assets/generated_images/minecraft_zombie_style_avatar.png";
+import avatarCreeper from "@assets/generated_images/minecraft_creeper_style_avatar.png";
+import avatarEnderman from "@assets/generated_images/minecraft_enderman_style_avatar.png";
+import avatarSkeleton from "@assets/generated_images/minecraft_skeleton_style_avatar.png";
+
+// Map avatar IDs to their images
+const AVATAR_IMAGES: Record<AvatarId, string> = {
+  steve: avatarSteve,
+  alex: avatarAlex,
+  zombie: avatarZombie,
+  creeper: avatarCreeper,
+  enderman: avatarEnderman,
+  skeleton: avatarSkeleton,
+};
 
 function PinEntry({ onSubmit, error, initialPin }: { 
   onSubmit: (pin: string, nickname: string, avatar: AvatarId) => void; 
@@ -112,7 +128,7 @@ function PinEntry({ onSubmit, error, initialPin }: {
                   key={avatar.id}
                   onClick={() => setSelectedAvatar(avatar.id)}
                   data-testid={`button-avatar-${avatar.id}`}
-                  className={`w-full aspect-square flex items-center justify-center border-4 transition-all ${
+                  className={`w-full aspect-square flex items-center justify-center border-4 transition-all overflow-hidden ${
                     selectedAvatar === avatar.id 
                       ? "border-green-500 bg-green-100 dark:bg-green-900/50" 
                       : "border-stone-400 dark:border-stone-500 bg-stone-100 dark:bg-stone-700"
@@ -120,9 +136,11 @@ function PinEntry({ onSubmit, error, initialPin }: {
                   style={{ borderRadius: '0px' }}
                   title={avatar.name}
                 >
-                  <div 
-                    className="w-6 h-6" 
-                    style={{ backgroundColor: avatar.color, borderRadius: '0px' }}
+                  <img 
+                    src={AVATAR_IMAGES[avatar.id]} 
+                    alt={avatar.name}
+                    className="w-full h-full object-cover"
+                    style={{ imageRendering: 'pixelated' }}
                   />
                 </button>
               ))}
@@ -260,16 +278,17 @@ function ConnectionQualityIcon({ quality }: { quality: 'good' | 'medium' | 'poor
 }
 
 function PeerCard({ peer }: { peer: ConnectedPeer }) {
-  const avatarColor = AVATAR_OPTIONS.find(a => a.id === peer.avatar)?.color || '#666';
   return (
     <div 
       className="flex items-center gap-3 p-2 bg-stone-100 dark:bg-stone-700 border-2 border-stone-300 dark:border-stone-600"
       style={{ borderRadius: '0px' }}
       data-testid={`peer-card-${peer.peerId}`}
     >
-      <div 
-        className="w-8 h-8 flex-shrink-0" 
-        style={{ backgroundColor: avatarColor, borderRadius: '0px' }}
+      <img 
+        src={AVATAR_IMAGES[peer.avatar]} 
+        alt={peer.avatar}
+        className="w-8 h-8 flex-shrink-0 object-cover"
+        style={{ imageRendering: 'pixelated', borderRadius: '0px' }}
       />
       <span className="flex-1 text-sm font-medium text-stone-800 dark:text-stone-100 truncate">
         {peer.nickname}
