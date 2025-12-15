@@ -84,7 +84,7 @@ function PinEntry({ onSubmit, error, initialPin }: { onSubmit: (pin: string) => 
               Nelle's Chat-O-Matic
             </h1>
             <p className="text-amber-700 dark:text-amber-300 text-sm">Enter your 6-digit PIN to join</p>
-            <p className="text-xs text-amber-600 dark:text-amber-400">Up to 4 players can join!</p>
+            <p className="text-xs text-amber-600 dark:text-amber-400">Up to 4 people can join!</p>
           </div>
 
           <div className="flex justify-center gap-2" onPaste={handlePaste}>
@@ -171,9 +171,9 @@ function StatusIndicator({ status, connectedPeers }: { status: ConnectionStatus;
       return { text: "Waiting for players...", color: "text-amber-600 dark:text-amber-400", pulse: true };
     }
     if (connectedPeers === 1) {
-      return { text: "1 player connected", color: "text-green-600 dark:text-green-400", pulse: false };
+      return { text: "1 person connected", color: "text-green-600 dark:text-green-400", pulse: false };
     }
-    return { text: `${connectedPeers} players connected`, color: "text-green-600 dark:text-green-400", pulse: false };
+    return { text: `${connectedPeers} people connected`, color: "text-green-600 dark:text-green-400", pulse: false };
   };
 
   const { text, color, pulse } = getStatusConfig();
@@ -202,7 +202,7 @@ function ParticipantIndicator({ count }: { count: number }) {
   return (
     <div className="flex items-center justify-center gap-2 text-amber-700 dark:text-amber-300" data-testid="participant-count">
       <Users className="w-4 h-4" />
-      <span className="text-sm font-medium">{count}/4 players in room</span>
+      <span className="text-sm font-medium">{count}/4 people in room</span>
     </div>
   );
 }
@@ -214,6 +214,7 @@ function VoiceChatInterface({
   audioLevel,
   connectedPeers,
   totalInRoom,
+  currentPin,
   onMuteToggle,
   onVolumeChange,
   onDisconnect,
@@ -224,6 +225,7 @@ function VoiceChatInterface({
   audioLevel: number;
   connectedPeers: number;
   totalInRoom: number;
+  currentPin: string;
   onMuteToggle: () => void;
   onVolumeChange: (value: number) => void;
   onDisconnect: () => void;
@@ -267,6 +269,10 @@ function VoiceChatInterface({
             </h1>
             <StatusIndicator status={status} connectedPeers={connectedPeers} />
             <ParticipantIndicator count={totalInRoom} />
+            <div className="pt-2 flex items-center justify-center gap-2" data-testid="pin-display">
+              <span className="text-xs text-amber-600 dark:text-amber-400">Room PIN:</span>
+              <span className="font-mono font-bold text-amber-900 dark:text-amber-100 tracking-wider">{currentPin}</span>
+            </div>
           </div>
 
           <div className="py-4">
@@ -674,6 +680,7 @@ export default function VoiceChat() {
           audioLevel={audioLevel}
           connectedPeers={connectedPeers}
           totalInRoom={totalInRoom}
+          currentPin={pin}
           onMuteToggle={handleMuteToggle}
           onVolumeChange={handleVolumeChange}
           onDisconnect={handleDisconnect}
