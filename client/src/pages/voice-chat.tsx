@@ -398,6 +398,38 @@ export default function VoiceChat() {
     }
   }, []);
 
+  const playChime = useCallback((type: 'join' | 'leave') => {
+    const ctx = new AudioContext();
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    
+    oscillator.type = 'sine';
+    gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+    
+    if (type === 'join') {
+      // Ascending chime for join
+      oscillator.frequency.setValueAtTime(523, ctx.currentTime); // C5
+      oscillator.frequency.setValueAtTime(659, ctx.currentTime + 0.1); // E5
+      oscillator.frequency.setValueAtTime(784, ctx.currentTime + 0.2); // G5
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+      oscillator.start(ctx.currentTime);
+      oscillator.stop(ctx.currentTime + 0.4);
+    } else {
+      // Descending chime for leave
+      oscillator.frequency.setValueAtTime(784, ctx.currentTime); // G5
+      oscillator.frequency.setValueAtTime(659, ctx.currentTime + 0.1); // E5
+      oscillator.frequency.setValueAtTime(523, ctx.currentTime + 0.2); // C5
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+      oscillator.start(ctx.currentTime);
+      oscillator.stop(ctx.currentTime + 0.4);
+    }
+    
+    setTimeout(() => ctx.close(), 500);
+  }, []);
+
   const cleanupWebRTC = useCallback(() => {
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
@@ -551,6 +583,7 @@ export default function VoiceChat() {
             break;
 
           case "peer-joined": {
+            playChime('join');
             const pc = createPeerConnection(message.peerId);
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
@@ -592,6 +625,7 @@ export default function VoiceChat() {
           }
 
           case "peer-left":
+            playChime('leave');
             removePeer(message.peerId);
             break;
         }
@@ -620,7 +654,7 @@ export default function VoiceChat() {
       setStatus("disconnected");
       cleanupWebRTC();
     }
-  }, [cleanupWebRTC, createPeerConnection, removePeer, setupAudioAnalyzer]);
+  }, [cleanupWebRTC, createPeerConnection, playChime, removePeer, setupAudioAnalyzer]);
 
   const handleDisconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
