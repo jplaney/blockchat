@@ -503,18 +503,22 @@ export default function VoiceChat() {
 
   const updatePeersDisplay = useCallback(async () => {
     const updatedPeers: ConnectedPeer[] = [];
-    for (const [peerId, peerData] of peerConnectionsRef.current.entries()) {
+    const entries = Array.from(peerConnectionsRef.current.entries());
+    for (const [peerId, peerData] of entries) {
       let quality: 'good' | 'medium' | 'poor' | 'unknown' = 'unknown';
       
       try {
         const stats = await peerData.pc.getStats();
-        stats.forEach((report) => {
-          if (report.type === 'candidate-pair' && report.state === 'succeeded') {
-            const rtt = report.currentRoundTripTime;
-            if (rtt !== undefined) {
-              if (rtt < 0.1) quality = 'good';
-              else if (rtt < 0.3) quality = 'medium';
-              else quality = 'poor';
+        stats.forEach((report: RTCStats) => {
+          if (report.type === 'candidate-pair') {
+            const pairReport = report as RTCIceCandidatePairStats;
+            if (pairReport.state === 'succeeded') {
+              const rtt = pairReport.currentRoundTripTime;
+              if (rtt !== undefined) {
+                if (rtt < 0.1) quality = 'good';
+                else if (rtt < 0.3) quality = 'medium';
+                else quality = 'poor';
+              }
             }
           }
         });
@@ -842,11 +846,11 @@ export default function VoiceChat() {
     setPin("");
   }, [cleanupWebRTC]);
 
-  // Use ref to track current push-to-talk state for stable event handlers
+  // Use refs to track current state for stable event handlers
   const pushToTalkRef = useRef(pushToTalk);
-  useEffect(() => {
-    pushToTalkRef.current = pushToTalk;
-  }, [pushToTalk]);
+  const isMutedRef = useRef(isMuted);
+  useEffect(() => { pushToTalkRef.current = pushToTalk; }, [pushToTalk]);
+  useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
 
   // Stable mute toggle that reads directly from audio track state
   const handleMuteToggle = useCallback(() => {
@@ -877,30 +881,43 @@ export default function VoiceChat() {
   useEffect(() => {
     if (!isJoined) return;
 
+    // Check if target is an interactive element that should handle its own keyboard events
+    const isInteractiveTarget = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) return false;
+      const tag = target.tagName;
+      return target.isContentEditable || ["INPUT", "BUTTON", "TEXTAREA", "SELECT"].includes(tag);
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && !e.repeat && localStreamRef.current) {
+      if (e.code !== "Space" || e.repeat || !localStreamRef.current || isInteractiveTarget(e.target)) return;
+      
+      if (pushToTalkRef.current) {
+        // PTT mode: unmute on press
         e.preventDefault();
-        if (pushToTalkRef.current) {
-          // PTT mode: unmute on press
-          localStreamRef.current.getAudioTracks().forEach(track => { track.enabled = true; });
+        localStreamRef.current.getAudioTracks().forEach(track => { track.enabled = true; });
+        if (isMutedRef.current) {
           setIsMuted(false);
-        } else {
-          // Toggle mode: flip mute state
-          const audioTrack = localStreamRef.current.getAudioTracks()[0];
-          if (audioTrack) {
-            const newEnabled = !audioTrack.enabled;
-            audioTrack.enabled = newEnabled;
-            setIsMuted(!newEnabled);
-          }
+        }
+      } else if (e.target === document.body) {
+        // Toggle mode: only respond when focus is on body
+        const audioTrack = localStreamRef.current.getAudioTracks()[0];
+        if (audioTrack) {
+          const newEnabled = !audioTrack.enabled;
+          audioTrack.enabled = newEnabled;
+          setIsMuted(!newEnabled);
         }
       }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && localStreamRef.current && pushToTalkRef.current) {
+      if (e.code !== "Space" || !pushToTalkRef.current || !localStreamRef.current || isInteractiveTarget(e.target)) return;
+      
+      if (e.target === document.body) {
         e.preventDefault();
-        // PTT mode: mute on release
-        localStreamRef.current.getAudioTracks().forEach(track => { track.enabled = false; });
+      }
+      // PTT mode: mute on release
+      localStreamRef.current.getAudioTracks().forEach(track => { track.enabled = false; });
+      if (!isMutedRef.current) {
         setIsMuted(true);
       }
     };
