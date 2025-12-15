@@ -122,7 +122,7 @@ function PinEntry({ onSubmit, error, initialPin }: { onSubmit: (pin: string) => 
             style={{ borderRadius: '0px' }}
           >
             <Phone className="w-5 h-5 mr-2" />
-            Join Game
+            Join Chat
           </Button>
 
           <p className="text-center text-xs text-amber-600 dark:text-amber-400">
@@ -328,7 +328,7 @@ function VoiceChatInterface({
               style={{ borderRadius: '0px' }}
             >
               <PhoneOff className="w-5 h-5" />
-              <span>Leave Game</span>
+              <span>Leave Chat</span>
             </Button>
           </div>
 
