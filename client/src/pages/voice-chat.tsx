@@ -1253,7 +1253,7 @@ export default function VoiceChat() {
     } finally {
       setIsJoiningRoom(false);
     }
-  }, [cleanupWebRTC, cleanupSoundCheck, createPeerConnection, playChime, pushToTalk, removePeer, setupAudioAnalyzer, updatePeersDisplay]);
+  }, [cleanupWebRTC, cleanupSoundCheck, createPeerConnection, pendingJoin, playChime, pushToTalk, removePeer, setupAudioAnalyzer, updatePeersDisplay]);
 
   const handleDisconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
