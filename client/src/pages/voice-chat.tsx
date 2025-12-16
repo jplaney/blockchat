@@ -416,13 +416,17 @@ function SoundCheckDialog({
   pushToTalk,
   onPlayTone, 
   onConfirm, 
-  onCancel 
+  onCancel,
+  isJoining,
+  joinError
 }: { 
   audioLevel: number;
   pushToTalk: boolean;
   onPlayTone: () => void;
   onConfirm: () => void;
   onCancel: () => void;
+  isJoining?: boolean;
+  joinError?: string;
 }) {
   return (
     <div 
@@ -488,9 +492,16 @@ function SoundCheckDialog({
             </div>
           </div>
 
+          {joinError && (
+            <p className="text-red-600 dark:text-red-400 text-sm text-center bg-red-100 dark:bg-red-900/30 p-2 border-2 border-red-300 dark:border-red-700" style={{ borderRadius: '0px' }}>
+              {joinError}
+            </p>
+          )}
+
           <div className="flex gap-3">
             <Button
               onClick={onCancel}
+              disabled={isJoining}
               className="flex-1 bg-stone-400 hover:bg-stone-500 border-4 border-stone-600 text-white font-bold"
               style={{ borderRadius: '0px' }}
               data-testid="button-cancel-sound-check"
@@ -499,12 +510,22 @@ function SoundCheckDialog({
             </Button>
             <Button
               onClick={onConfirm}
+              disabled={isJoining}
               className="flex-1 bg-green-600 hover:bg-green-700 border-4 border-green-800 text-white font-bold"
               style={{ borderRadius: '0px' }}
               data-testid="button-confirm-join"
             >
-              <Phone className="w-5 h-5 mr-2" />
-              Join Chat
+              {isJoining ? (
+                <>
+                  <div className="w-5 h-5 mr-2 border-2 border-white border-t-transparent animate-spin" style={{ borderRadius: '0px' }} />
+                  Joining...
+                </>
+              ) : (
+                <>
+                  <Phone className="w-5 h-5 mr-2" />
+                  Join Chat
+                </>
+              )}
             </Button>
           </div>
         </CardContent>
@@ -700,6 +721,8 @@ export default function VoiceChat() {
   const [pendingJoin, setPendingJoin] = useState<{ pin: string; nickname: string; avatar: AvatarId } | null>(null);
   const [testAudioLevel, setTestAudioLevel] = useState(0);
   const [isRequestingMic, setIsRequestingMic] = useState(false);
+  const [isJoiningRoom, setIsJoiningRoom] = useState(false);
+  const [joinError, setJoinError] = useState<string>();
   const testStreamRef = useRef<MediaStream | null>(null);
   const testAudioContextRef = useRef<AudioContext | null>(null);
   const testAnalyserRef = useRef<AnalyserNode | null>(null);
@@ -1077,13 +1100,11 @@ export default function VoiceChat() {
   const handleConfirmJoin = useCallback(async () => {
     if (!pendingJoin) return;
     
-    cleanupSoundCheck();
-    setShowSoundCheck(false);
-    setError(undefined);
-    setStatus("connecting");
-    shouldReconnectRef.current = true;
-
+    setIsJoiningRoom(true);
+    setJoinError(undefined);
+    
     try {
+      // Get audio stream first before closing sound check
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
@@ -1091,6 +1112,14 @@ export default function VoiceChat() {
           autoGainControl: true,
         },
       });
+      
+      // Now clean up sound check after we have the new stream
+      cleanupSoundCheck();
+      setShowSoundCheck(false);
+      setError(undefined);
+      setStatus("connecting");
+      shouldReconnectRef.current = true;
+      
       localStreamRef.current = stream;
       setupAudioAnalyzer(stream);
 
@@ -1214,15 +1243,17 @@ export default function VoiceChat() {
       };
 
     } catch (err) {
-      if (err instanceof Error && err.name === "NotAllowedError") {
-        setError("Microphone access denied. Please allow microphone access and try again.");
-      } else {
-        setError("Failed to start voice chat. Please check your microphone.");
-      }
+      const errorMessage = err instanceof Error && err.name === "NotAllowedError"
+        ? "Microphone access denied. Please allow microphone access and try again."
+        : "Failed to start voice chat. Please check your microphone.";
+      setJoinError(errorMessage);
+      setError(errorMessage);
       setStatus("disconnected");
       cleanupWebRTC();
+    } finally {
+      setIsJoiningRoom(false);
     }
-  }, [cleanupWebRTC, createPeerConnection, playChime, pushToTalk, removePeer, setupAudioAnalyzer, updatePeersDisplay]);
+  }, [cleanupWebRTC, cleanupSoundCheck, createPeerConnection, playChime, pushToTalk, removePeer, setupAudioAnalyzer, updatePeersDisplay]);
 
   const handleDisconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -1359,6 +1390,8 @@ export default function VoiceChat() {
           onPlayTone={playTestTone}
           onConfirm={handleConfirmJoin}
           onCancel={handleCancelSoundCheck}
+          isJoining={isJoiningRoom}
+          joinError={joinError}
         />
       )}
       {!isJoined && !showSoundCheck ? (
