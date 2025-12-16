@@ -31,10 +31,11 @@ const AVATAR_IMAGES: Record<AvatarId, string> = {
   skeleton: avatarSkeleton,
 };
 
-function PinEntry({ onSubmit, error, initialPin }: { 
+function PinEntry({ onSubmit, error, initialPin, isLoading }: { 
   onSubmit: (pin: string, nickname: string, avatar: AvatarId) => void; 
   error?: string; 
-  initialPin?: string 
+  initialPin?: string;
+  isLoading?: boolean;
 }) {
   const [pin, setPin] = useState(() => {
     if (initialPin && /^\d{6}$/.test(initialPin)) {
@@ -185,13 +186,22 @@ function PinEntry({ onSubmit, error, initialPin }: {
 
           <Button
             onClick={() => onSubmit(pin.join(""), nickname.trim(), selectedAvatar)}
-            disabled={!isComplete}
+            disabled={!isComplete || isLoading}
             className="w-full h-14 text-lg bg-green-600 hover:bg-green-700 border-4 border-green-800 text-white font-bold"
             data-testid="button-join"
             style={{ borderRadius: '0px' }}
           >
-            <Phone className="w-5 h-5 mr-2" />
-            Join Chat
+            {isLoading ? (
+              <>
+                <div className="w-5 h-5 mr-2 border-2 border-white border-t-transparent animate-spin" style={{ borderRadius: '0px' }} />
+                Checking Mic...
+              </>
+            ) : (
+              <>
+                <Phone className="w-5 h-5 mr-2" />
+                Join Chat
+              </>
+            )}
           </Button>
         </CardContent>
       </Card>
@@ -689,6 +699,7 @@ export default function VoiceChat() {
   const [showSoundCheck, setShowSoundCheck] = useState(false);
   const [pendingJoin, setPendingJoin] = useState<{ pin: string; nickname: string; avatar: AvatarId } | null>(null);
   const [testAudioLevel, setTestAudioLevel] = useState(0);
+  const [isRequestingMic, setIsRequestingMic] = useState(false);
   const testStreamRef = useRef<MediaStream | null>(null);
   const testAudioContextRef = useRef<AudioContext | null>(null);
   const testAnalyserRef = useRef<AnalyserNode | null>(null);
@@ -834,6 +845,8 @@ export default function VoiceChat() {
   }, []);
 
   const startSoundCheck = useCallback(async () => {
+    setIsRequestingMic(true);
+    setError(undefined);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       testStreamRef.current = stream;
@@ -859,6 +872,8 @@ export default function VoiceChat() {
       setShowSoundCheck(true);
     } catch (err) {
       setError("Could not access microphone. Please allow microphone access.");
+    } finally {
+      setIsRequestingMic(false);
     }
   }, []);
 
@@ -1347,7 +1362,7 @@ export default function VoiceChat() {
         />
       )}
       {!isJoined && !showSoundCheck ? (
-        <PinEntry onSubmit={handlePinSubmit} error={error} initialPin={urlPin} />
+        <PinEntry onSubmit={handlePinSubmit} error={error} initialPin={urlPin} isLoading={isRequestingMic} />
       ) : isJoined ? (
         <VoiceChatInterface
           status={status}
