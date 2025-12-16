@@ -5,7 +5,10 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Phone, PhoneOff, Mic, MicOff, Volume2, VolumeX, Users, Wifi, WifiOff, Signal, SignalLow, SignalMedium, SignalHigh } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Phone, PhoneOff, Mic, MicOff, Volume2, VolumeX, Users, Wifi, WifiOff, Signal, SignalLow, SignalMedium, SignalHigh, Share2, Copy, Check } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
+import { useToast } from "@/hooks/use-toast";
 import type { ConnectionStatus, SignalingMessage, AvatarId, PeerInfo } from "@shared/schema";
 import { AVATAR_OPTIONS } from "@shared/schema";
 import minecraftCharacters from "@assets/generated_images/minecraft_characters_chatting_together.png";
@@ -277,23 +280,225 @@ function ConnectionQualityIcon({ quality }: { quality: 'good' | 'medium' | 'poor
   }
 }
 
-function PeerCard({ peer }: { peer: ConnectedPeer }) {
+function PeerCard({ peer, isSpeaking }: { peer: ConnectedPeer; isSpeaking?: boolean }) {
   return (
     <div 
-      className="flex items-center gap-3 p-2 bg-stone-100 dark:bg-stone-700 border-2 border-stone-300 dark:border-stone-600"
+      className={`flex items-center gap-3 p-2 bg-stone-100 dark:bg-stone-700 border-2 transition-all ${
+        isSpeaking 
+          ? "border-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" 
+          : "border-stone-300 dark:border-stone-600"
+      }`}
       style={{ borderRadius: '0px' }}
       data-testid={`peer-card-${peer.peerId}`}
     >
-      <img 
-        src={AVATAR_IMAGES[peer.avatar]} 
-        alt={peer.avatar}
-        className="w-8 h-8 flex-shrink-0 object-cover"
-        style={{ imageRendering: 'pixelated', borderRadius: '0px' }}
-      />
+      <div className={`relative ${isSpeaking ? "animate-pulse" : ""}`}>
+        <img 
+          src={AVATAR_IMAGES[peer.avatar]} 
+          alt={peer.avatar}
+          className="w-8 h-8 flex-shrink-0 object-cover"
+          style={{ imageRendering: 'pixelated', borderRadius: '0px' }}
+        />
+        {isSpeaking && (
+          <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 border border-white" style={{ borderRadius: '0px' }} />
+        )}
+      </div>
       <span className="flex-1 text-sm font-medium text-stone-800 dark:text-stone-100 truncate">
         {peer.nickname}
       </span>
       <ConnectionQualityIcon quality={peer.quality} />
+    </div>
+  );
+}
+
+function ShareDialog({ pin }: { pin: string }) {
+  const [copied, setCopied] = useState(false);
+  const { toast } = useToast();
+  
+  const shareUrl = `${window.location.origin}${window.location.pathname}?pin=${pin}`;
+  
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      toast({
+        title: "Link copied!",
+        description: "Share this link with your family to join the chat.",
+      });
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      toast({
+        title: "Couldn't copy",
+        description: "Please copy the link manually.",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button 
+          size="icon" 
+          variant="ghost" 
+          className="text-amber-700 dark:text-amber-300"
+          data-testid="button-share"
+        >
+          <Share2 className="w-4 h-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="bg-amber-50 dark:bg-stone-800 border-4 border-amber-800 dark:border-amber-900" style={{ borderRadius: '0px' }}>
+        <DialogHeader>
+          <DialogTitle className="text-amber-900 dark:text-amber-100 text-center" style={{ fontFamily: "'Press Start 2P', monospace, system-ui" }}>
+            Invite Friends
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-6 py-4">
+          <div className="flex justify-center">
+            <div className="p-4 bg-white border-4 border-stone-300" style={{ borderRadius: '0px' }}>
+              <QRCodeSVG 
+                value={shareUrl} 
+                size={160}
+                level="M"
+                data-testid="qr-code"
+              />
+            </div>
+          </div>
+          
+          <div className="text-center space-y-2">
+            <p className="text-sm text-amber-700 dark:text-amber-300">Room PIN</p>
+            <p className="text-2xl font-bold font-mono tracking-widest text-amber-900 dark:text-amber-100" data-testid="text-share-pin">
+              {pin}
+            </p>
+          </div>
+          
+          <div className="space-y-2">
+            <Label className="text-amber-700 dark:text-amber-300 text-sm">Share Link</Label>
+            <div className="flex gap-2">
+              <Input 
+                value={shareUrl} 
+                readOnly 
+                className="flex-1 bg-stone-100 dark:bg-stone-700 border-2 border-stone-300 dark:border-stone-600 text-sm"
+                style={{ borderRadius: '0px' }}
+                data-testid="input-share-link"
+              />
+              <Button 
+                onClick={handleCopy}
+                className="bg-green-600 hover:bg-green-700 border-2 border-green-800 text-white"
+                style={{ borderRadius: '0px' }}
+                data-testid="button-copy-link"
+              >
+                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              </Button>
+            </div>
+          </div>
+          
+          <p className="text-center text-xs text-amber-600 dark:text-amber-400">
+            Scan the QR code or share the link to invite family members!
+          </p>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function SoundCheckDialog({ 
+  audioLevel, 
+  pushToTalk,
+  onPlayTone, 
+  onConfirm, 
+  onCancel 
+}: { 
+  audioLevel: number;
+  pushToTalk: boolean;
+  onPlayTone: () => void;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div 
+      className="min-h-screen flex items-center justify-center p-4"
+      style={{
+        backgroundImage: `url(${minecraftGrass})`,
+        backgroundSize: '120px 120px',
+        backgroundRepeat: 'repeat',
+      }}
+    >
+      <div className="absolute inset-0 bg-gradient-to-b from-sky-400/80 to-sky-600/80 dark:from-sky-900/90 dark:to-slate-900/95" />
+      <Card className="w-full max-w-md relative z-10 border-4 border-amber-800 dark:border-amber-900 bg-amber-50/95 dark:bg-stone-800/95">
+        <CardContent className="p-8 space-y-6">
+          <div className="text-center space-y-2">
+            <h1 className="text-lg font-bold text-amber-900 dark:text-amber-100" style={{ fontFamily: "'Press Start 2P', monospace, system-ui" }}>
+              Sound Check
+            </h1>
+            <p className="text-sm text-amber-700 dark:text-amber-300">
+              Let's make sure your audio is working!
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-amber-700 dark:text-amber-300 text-sm font-medium flex items-center gap-2">
+                <Mic className="w-4 h-4" />
+                Microphone Test
+              </Label>
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                Speak into your microphone - you should see the bars move
+              </p>
+              <AudioLevelMeter level={audioLevel} />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-amber-700 dark:text-amber-300 text-sm font-medium flex items-center gap-2">
+                <Volume2 className="w-4 h-4" />
+                Speaker Test
+              </Label>
+              <Button
+                onClick={onPlayTone}
+                className="w-full bg-stone-500 hover:bg-stone-600 border-4 border-stone-700 text-white font-bold"
+                style={{ borderRadius: '0px' }}
+                data-testid="button-test-sound"
+              >
+                Play Test Sound
+              </Button>
+              <p className="text-xs text-amber-600 dark:text-amber-400 text-center">
+                You should hear a short tone
+              </p>
+            </div>
+
+            <div className="p-3 bg-stone-100 dark:bg-stone-700 border-2 border-stone-300 dark:border-stone-600" style={{ borderRadius: '0px' }}>
+              <p className="text-sm font-medium text-stone-800 dark:text-stone-100 mb-1">
+                Voice Mode: {pushToTalk ? "Push to Talk" : "Toggle Mute"}
+              </p>
+              <p className="text-xs text-stone-600 dark:text-stone-400">
+                {pushToTalk 
+                  ? "Hold the Spacebar to talk, release to mute"
+                  : "Press Spacebar to toggle your microphone on/off"
+                }
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <Button
+              onClick={onCancel}
+              className="flex-1 bg-stone-400 hover:bg-stone-500 border-4 border-stone-600 text-white font-bold"
+              style={{ borderRadius: '0px' }}
+              data-testid="button-cancel-sound-check"
+            >
+              Back
+            </Button>
+            <Button
+              onClick={onConfirm}
+              className="flex-1 bg-green-600 hover:bg-green-700 border-4 border-green-800 text-white font-bold"
+              style={{ borderRadius: '0px' }}
+              data-testid="button-confirm-join"
+            >
+              <Phone className="w-5 h-5 mr-2" />
+              Join Chat
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -308,6 +513,7 @@ function VoiceChatInterface({
   currentPin,
   peers,
   pushToTalk,
+  speakingPeers,
   onMuteToggle,
   onVolumeChange,
   onDisconnect,
@@ -322,6 +528,7 @@ function VoiceChatInterface({
   currentPin: string;
   peers: ConnectedPeer[];
   pushToTalk: boolean;
+  speakingPeers: Set<string>;
   onMuteToggle: () => void;
   onVolumeChange: (value: number) => void;
   onDisconnect: () => void;
@@ -359,6 +566,7 @@ function VoiceChatInterface({
             <div className="pt-2 flex items-center justify-center gap-2" data-testid="pin-display">
               <span className="text-xs text-amber-600 dark:text-amber-400">Room PIN:</span>
               <span className="font-mono font-bold text-amber-900 dark:text-amber-100 tracking-wider">{currentPin}</span>
+              <ShareDialog pin={currentPin} />
             </div>
           </div>
 
@@ -367,7 +575,7 @@ function VoiceChatInterface({
               <Label className="text-amber-700 dark:text-amber-300 text-xs font-medium">Connected ({peers.length})</Label>
               <div className="space-y-1">
                 {peers.map(peer => (
-                  <PeerCard key={peer.peerId} peer={peer} />
+                  <PeerCard key={peer.peerId} peer={peer} isSpeaking={speakingPeers.has(peer.peerId)} />
                 ))}
               </div>
             </div>
@@ -477,6 +685,15 @@ export default function VoiceChat() {
   const [connectedPeers, setConnectedPeers] = useState(0);
   const [totalInRoom, setTotalInRoom] = useState(1);
   const [peers, setPeers] = useState<ConnectedPeer[]>([]);
+  const [speakingPeers, setSpeakingPeers] = useState<Set<string>>(new Set());
+  const [showSoundCheck, setShowSoundCheck] = useState(false);
+  const [pendingJoin, setPendingJoin] = useState<{ pin: string; nickname: string; avatar: AvatarId } | null>(null);
+  const [testAudioLevel, setTestAudioLevel] = useState(0);
+  const testStreamRef = useRef<MediaStream | null>(null);
+  const testAudioContextRef = useRef<AudioContext | null>(null);
+  const testAnalyserRef = useRef<AnalyserNode | null>(null);
+  const testAnimationRef = useRef<number>(0);
+  const peerAnalysersRef = useRef<Map<string, { ctx: AudioContext; analyser: AnalyserNode; source: MediaStreamAudioSourceNode }>>(new Map());
 
   const urlPin = new URLSearchParams(window.location.search).get("pin") || undefined;
 
@@ -599,6 +816,8 @@ export default function VoiceChat() {
       audioElement.remove();
     });
     peerConnectionsRef.current.clear();
+    peerAnalysersRef.current.forEach(({ ctx }) => ctx.close());
+    peerAnalysersRef.current.clear();
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(track => track.stop());
       localStreamRef.current = null;
@@ -611,7 +830,131 @@ export default function VoiceChat() {
     setConnectedPeers(0);
     setTotalInRoom(1);
     setPeers([]);
+    setSpeakingPeers(new Set());
   }, []);
+
+  const startSoundCheck = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      testStreamRef.current = stream;
+      
+      testAudioContextRef.current = new AudioContext();
+      testAnalyserRef.current = testAudioContextRef.current.createAnalyser();
+      testAnalyserRef.current.fftSize = 256;
+      
+      const source = testAudioContextRef.current.createMediaStreamSource(stream);
+      source.connect(testAnalyserRef.current);
+      
+      const dataArray = new Uint8Array(testAnalyserRef.current.frequencyBinCount);
+      
+      const updateTestLevel = () => {
+        if (!testAnalyserRef.current) return;
+        testAnalyserRef.current.getByteFrequencyData(dataArray);
+        const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+        setTestAudioLevel(Math.min(average / 128, 1));
+        testAnimationRef.current = requestAnimationFrame(updateTestLevel);
+      };
+      updateTestLevel();
+      
+      setShowSoundCheck(true);
+    } catch (err) {
+      setError("Could not access microphone. Please allow microphone access.");
+    }
+  }, []);
+
+  const cleanupSoundCheck = useCallback(() => {
+    if (testAnimationRef.current) {
+      cancelAnimationFrame(testAnimationRef.current);
+    }
+    if (testStreamRef.current) {
+      testStreamRef.current.getTracks().forEach(track => track.stop());
+      testStreamRef.current = null;
+    }
+    if (testAudioContextRef.current) {
+      testAudioContextRef.current.close();
+      testAudioContextRef.current = null;
+    }
+    testAnalyserRef.current = null;
+    setTestAudioLevel(0);
+  }, []);
+
+  const playTestTone = useCallback(() => {
+    const ctx = new AudioContext();
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(440, ctx.currentTime);
+    gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+    
+    oscillator.start(ctx.currentTime);
+    oscillator.stop(ctx.currentTime + 0.5);
+    
+    setTimeout(() => ctx.close(), 600);
+  }, []);
+
+  const setupPeerAudioAnalyser = useCallback((peerId: string, stream: MediaStream) => {
+    try {
+      // Clean up any existing analyser for this peer
+      const existing = peerAnalysersRef.current.get(peerId);
+      if (existing) {
+        existing.ctx.close();
+        peerAnalysersRef.current.delete(peerId);
+      }
+      
+      const ctx = new AudioContext();
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      
+      // Use the stream directly to get unaffected audio levels
+      const source = ctx.createMediaStreamSource(stream);
+      source.connect(analyser);
+      // Don't connect to destination - the audio element handles playback
+      
+      peerAnalysersRef.current.set(peerId, { ctx, analyser, source });
+    } catch {
+      // Some browsers may not support this
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isJoined || peerAnalysersRef.current.size === 0) return;
+    
+    const dataArrays = new Map<string, Uint8Array>();
+    peerAnalysersRef.current.forEach((data, peerId) => {
+      dataArrays.set(peerId, new Uint8Array(data.analyser.frequencyBinCount));
+    });
+    
+    let frameId: number;
+    const checkSpeaking = () => {
+      const speaking = new Set<string>();
+      
+      peerAnalysersRef.current.forEach((data, peerId) => {
+        const dataArray = dataArrays.get(peerId);
+        if (!dataArray) return;
+        
+        data.analyser.getByteFrequencyData(dataArray);
+        const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+        
+        if (average > 15) {
+          speaking.add(peerId);
+        }
+      });
+      
+      setSpeakingPeers(speaking);
+      frameId = requestAnimationFrame(checkSpeaking);
+    };
+    
+    checkSpeaking();
+    
+    return () => {
+      if (frameId) cancelAnimationFrame(frameId);
+    };
+  }, [isJoined, peers.length]);
 
   const setupAudioAnalyzer = useCallback((stream: MediaStream) => {
     audioContextRef.current = new AudioContext();
@@ -668,6 +1011,11 @@ export default function VoiceChat() {
 
     pc.ontrack = (event) => {
       audioElement.srcObject = event.streams[0];
+      // Set up audio analyser for speaking detection using the stream directly
+      // This ensures volume control doesn't affect speaking detection
+      if (event.streams[0]) {
+        setupPeerAudioAnalyser(remotePeerId, event.streams[0]);
+      }
     };
 
     pc.onconnectionstatechange = () => {
@@ -684,7 +1032,7 @@ export default function VoiceChat() {
     updateConnectionCount();
     updatePeersDisplay();
     return pc;
-  }, [updateConnectionCount, updatePeersDisplay]);
+  }, [updateConnectionCount, updatePeersDisplay, setupPeerAudioAnalyser]);
 
   const removePeer = useCallback((peerId: string) => {
     const peerData = peerConnectionsRef.current.get(peerId);
@@ -692,17 +1040,32 @@ export default function VoiceChat() {
       peerData.pc.close();
       peerData.audioElement.remove();
       peerConnectionsRef.current.delete(peerId);
+      // Clean up audio analyser
+      const analyserData = peerAnalysersRef.current.get(peerId);
+      if (analyserData) {
+        analyserData.ctx.close();
+        peerAnalysersRef.current.delete(peerId);
+      }
       updateConnectionCount();
       updatePeersDisplay();
     }
   }, [updateConnectionCount, updatePeersDisplay]);
 
-  const handleJoin = useCallback(async (enteredPin: string, nickname: string, avatar: AvatarId) => {
-    setError(undefined);
-    setStatus("connecting");
+  const handlePinSubmit = useCallback((enteredPin: string, nickname: string, avatar: AvatarId) => {
+    setPendingJoin({ pin: enteredPin, nickname, avatar });
     setPin(enteredPin);
     setUserNickname(nickname);
     setUserAvatar(avatar);
+    startSoundCheck();
+  }, [startSoundCheck]);
+
+  const handleConfirmJoin = useCallback(async () => {
+    if (!pendingJoin) return;
+    
+    cleanupSoundCheck();
+    setShowSoundCheck(false);
+    setError(undefined);
+    setStatus("connecting");
     shouldReconnectRef.current = true;
 
     try {
@@ -732,10 +1095,10 @@ export default function VoiceChat() {
       ws.onopen = () => {
         ws.send(JSON.stringify({
           type: "join",
-          pin: enteredPin,
+          pin: pendingJoin.pin,
           peerId: peerIdRef.current,
-          nickname,
-          avatar,
+          nickname: pendingJoin.nickname,
+          avatar: pendingJoin.avatar,
         }));
       };
 
@@ -825,7 +1188,7 @@ export default function VoiceChat() {
         if (isJoinedRef.current && shouldReconnectRef.current) {
           setStatus("reconnecting");
           reconnectTimeoutRef.current = window.setTimeout(() => {
-            handleJoin(enteredPin, nickname, avatar);
+            handleConfirmJoin();
           }, 3000);
         }
       };
@@ -965,12 +1328,27 @@ export default function VoiceChat() {
     };
   }, [cleanupWebRTC]);
 
+  const handleCancelSoundCheck = useCallback(() => {
+    cleanupSoundCheck();
+    setShowSoundCheck(false);
+    setPendingJoin(null);
+  }, [cleanupSoundCheck]);
+
   return (
     <>
       <div ref={audioContainerRef} style={{ display: "none" }} />
-      {!isJoined ? (
-        <PinEntry onSubmit={handleJoin} error={error} initialPin={urlPin} />
-      ) : (
+      {showSoundCheck && (
+        <SoundCheckDialog
+          audioLevel={testAudioLevel}
+          pushToTalk={pushToTalk}
+          onPlayTone={playTestTone}
+          onConfirm={handleConfirmJoin}
+          onCancel={handleCancelSoundCheck}
+        />
+      )}
+      {!isJoined && !showSoundCheck ? (
+        <PinEntry onSubmit={handlePinSubmit} error={error} initialPin={urlPin} />
+      ) : isJoined ? (
         <VoiceChatInterface
           status={status}
           isMuted={isMuted}
@@ -981,12 +1359,13 @@ export default function VoiceChat() {
           currentPin={pin}
           peers={peers}
           pushToTalk={pushToTalk}
+          speakingPeers={speakingPeers}
           onMuteToggle={handleMuteToggle}
           onVolumeChange={handleVolumeChange}
           onDisconnect={handleDisconnect}
           onPushToTalkChange={handlePushToTalkChange}
         />
-      )}
+      ) : null}
     </>
   );
 }
