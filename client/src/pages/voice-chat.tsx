@@ -11,12 +11,12 @@ import { AVATAR_OPTIONS } from "@shared/schema";
 import minecraftCharacters from "@assets/generated_images/minecraft_characters_chatting_together.png";
 import minecraftMic from "@assets/generated_images/pixel_art_microphone_icon.png";
 import minecraftGrass from "@assets/generated_images/minecraft_grass_block_pattern.png";
-import avatarSteve from "@assets/generated_images/minecraft_steve_style_avatar.png";
-import avatarAlex from "@assets/generated_images/minecraft_alex_style_avatar.png";
-import avatarZombie from "@assets/generated_images/minecraft_zombie_style_avatar.png";
-import avatarCreeper from "@assets/generated_images/minecraft_creeper_style_avatar.png";
-import avatarEnderman from "@assets/generated_images/minecraft_enderman_style_avatar.png";
-import avatarSkeleton from "@assets/generated_images/minecraft_skeleton_style_avatar.png";
+import avatarSteve from "@assets/generated_images/pixelated_steve_head_portrait.png";
+import avatarAlex from "@assets/generated_images/pixelated_alex_head_portrait.png";
+import avatarZombie from "@assets/generated_images/pixelated_zombie_head_portrait.png";
+import avatarCreeper from "@assets/generated_images/pixelated_creeper_head_portrait.png";
+import avatarEnderman from "@assets/generated_images/pixelated_enderman_head_portrait.png";
+import avatarSkeleton from "@assets/generated_images/pixelated_skeleton_head_portrait.png";
 
 // Map avatar IDs to their images
 const AVATAR_IMAGES: Record<AvatarId, string> = {
