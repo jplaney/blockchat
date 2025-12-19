@@ -99,10 +99,10 @@ shared/           # Shared types and schemas
 
 ```bash
 # Build the image
-docker build -t nelles-chat-o-matic .
+docker build -t blockchat .
 
 # Run the container
-docker run -p 5000:5000 -e SESSION_SECRET=your-secret nelles-chat-o-matic
+docker run -p 5000:5000 -e SESSION_SECRET=your-secret blockchat
 ```
 
 See [docker-compose.yml](./docker-compose.yml) for orchestration.

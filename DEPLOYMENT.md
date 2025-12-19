@@ -22,15 +22,15 @@ The project is pre-configured for Replit deployment:
 
 ```bash
 # Build the image
-docker build -t nelles-chat-o-matic .
+docker build -t blockchat .
 
 # Run with environment variables
 docker run -d \
   -p 5000:5000 \
   -e NODE_ENV=production \
   -e SESSION_SECRET=your-secure-secret \
-  --name chat-app \
-  nelles-chat-o-matic
+  --name blockchat \
+  blockchat
 ```
 
 ### Option 3: Traditional Server
