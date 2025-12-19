@@ -13,8 +13,8 @@ This guide covers setting up Nelle's Chat-O-Matic for local development.
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/nelles-chat-o-matic.git
-cd nelles-chat-o-matic
+git clone https://github.com/jplaney/blockchat.git
+cd blockchat
 ```
 
 ### 2. Install Dependencies

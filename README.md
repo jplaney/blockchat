@@ -33,8 +33,8 @@ A Minecraft-themed voice chat application for family gaming sessions. Connect in
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/nelles-chat-o-matic.git
-cd nelles-chat-o-matic
+git clone https://github.com/jplaney/blockchat.git
+cd blockchat
 
 # Install dependencies
 npm install
