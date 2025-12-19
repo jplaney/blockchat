@@ -1,8 +1,8 @@
-# Nelle's Chat-O-Matic
+# BlockChat
 
 ## Overview
 
-A Minecraft-themed parent-child voice chat application ("Nelle's Chat-O-Matic") that enables simple, secure voice communication for family gaming sessions. Users connect instantly using a 6-digit PIN code to join voice chat rooms. The application prioritizes child-friendly interactions with clear status indicators, large touch targets, and zero learning curve design.
+A Minecraft-themed parent-child voice chat application ("BlockChat") that enables simple, secure voice communication for family gaming sessions. Users connect instantly using a 6-digit PIN code to join voice chat rooms. The application prioritizes child-friendly interactions with clear status indicators, large touch targets, and zero learning curve design.
 
 ## Key Features
 

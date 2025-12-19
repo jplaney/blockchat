@@ -105,7 +105,7 @@ function PinEntry({ onSubmit, error, initialPin, isLoading }: {
         <CardContent className="p-6 space-y-5">
           <div className="text-center space-y-2">
             <h1 className="text-xl font-bold text-amber-900 dark:text-amber-100" style={{ fontFamily: "'Press Start 2P', monospace, system-ui" }}>
-              Nelle's Chat-O-Matic
+              BlockChat
             </h1>
             <p className="text-xs text-amber-600 dark:text-amber-400">Up to 4 people can join!</p>
           </div>
@@ -591,7 +591,7 @@ function VoiceChatInterface({
               />
             </div>
             <h1 className="text-lg font-bold text-amber-900 dark:text-amber-100" style={{ fontFamily: "'Press Start 2P', monospace, system-ui" }}>
-              Nelle's Chat-O-Matic
+              BlockChat
             </h1>
             <StatusIndicator status={status} connectedPeers={connectedPeers} />
             <div className="pt-2 flex items-center justify-center gap-2" data-testid="pin-display">

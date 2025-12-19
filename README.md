@@ -1,4 +1,4 @@
-# Nelle's Chat-O-Matic
+# BlockChat
 
 A Minecraft-themed voice chat application for family gaming sessions. Connect instantly using a 6-digit PIN code to join voice chat rooms with your family.
 

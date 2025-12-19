@@ -1,6 +1,6 @@
 # Deployment Guide
 
-This guide covers deploying Nelle's Chat-O-Matic to production environments.
+This guide covers deploying BlockChat to production environments.
 
 ## Requirements
 

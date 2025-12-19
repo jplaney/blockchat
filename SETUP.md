@@ -1,6 +1,6 @@
 # Setup Guide
 
-This guide covers setting up Nelle's Chat-O-Matic for local development.
+This guide covers setting up BlockChat for local development.
 
 ## Prerequisites
 
